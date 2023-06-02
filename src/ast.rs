@@ -2,58 +2,59 @@ use itertools::Itertools;
 
 use crate::token::Token;
 
-// pub enum Node {
-//     Statement(String),
-//     Expression(String),
-// }
-
-#[derive(Debug, Clone)]
-pub(crate) struct Let {
-    token: Token,
-    pub name: Identifier,
-    pub value: Expression,
+pub trait Node {
+    fn token_literal(&self) -> String;
 }
 
-#[derive(Debug, Clone)]
-pub(crate) enum Statement {
-    Let(Let),
+pub trait Statement {
+    fn statement_node(&self);
 }
 
-impl Statement {
-    pub fn token_literal(&self) -> String {
-        match self {
-            Statement::Let(Let { token, .. }) => token.literal(),
-        }
-    }
+pub trait StatementNode: Node + Statement {}
+
+pub trait Expression {
+    fn expression_node(&self);
 }
 
-#[derive(Debug, Clone)]
-pub(crate) enum Expression {
-    Identifier(Identifier),
+pub trait ExpressionNode: Node + Expression {}
+
+pub struct Program {
+    pub statements: Vec<Box<dyn StatementNode>>,
 }
-impl Expression {
+
+impl Node for Program {
     fn token_literal(&self) -> String {
-        match self {
-            Expression::Identifier(Identifier { token, .. }) => token.literal(),
-        }
+        self.statements.iter().map(|s| s.token_literal()).join("\n")
     }
 }
 
-#[derive(Debug, Clone)]
-pub(crate) struct Identifier {
-    token: Token,
+pub struct LetStatement {
+    pub token: Token,
+    pub name: Identifier,
+    pub value: Box<dyn ExpressionNode>,
+}
+
+impl Statement for LetStatement {
+    fn statement_node(&self) {}
+}
+
+impl Node for LetStatement {
+    fn token_literal(&self) -> String {
+        self.token.literal()
+    }
+}
+
+pub struct Identifier {
+    pub token: Token,
     pub value: String,
 }
 
-pub struct Program {
-    pub(crate) statements: Vec<Statement>,
+impl Expression for Identifier {
+    fn expression_node(&self) {}
 }
 
-impl Program {
-    pub fn token_literal(&self) -> String {
-        self.statements
-            .iter()
-            .map(|s| s.token_literal().clone())
-            .join("\n")
+impl Node for Identifier {
+    fn token_literal(&self) -> String {
+        self.token.literal()
     }
 }

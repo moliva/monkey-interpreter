@@ -1,5 +1,5 @@
 use crate::{
-    ast::{Program, Statement},
+    ast::{Program, Statement, StatementNode},
     lexer::Lexer,
     token::Token,
 };
@@ -44,21 +44,26 @@ impl Parser {
         Program { statements }
     }
 
-    fn parse_statement(&self) -> Option<Statement> {
+    fn parse_statement(&self) -> Option<Box<dyn StatementNode>> {
         match self.current_token {
             Token::Let => Some(self.parset_let_statement()),
             _ => None,
         }
     }
 
-    fn parset_let_statement(&self) -> Statement {
+    fn parset_let_statement(&self) -> Box<dyn StatementNode> {
         todo!()
     }
 }
 
 #[cfg(test)]
 mod tests {
-    use crate::{ast::Statement, lexer::Lexer};
+    use std::any::Any;
+
+    use crate::{
+        ast::{LetStatement, Node, Statement, StatementNode},
+        lexer::Lexer,
+    };
 
     use super::Parser;
 
@@ -83,29 +88,25 @@ let foobar = 838383;
 
         let tests = vec!["x", "y", "foobar"];
         for (i, test) in tests.iter().enumerate() {
-            let statement = program.statements[i].clone();
+            let statement = program.statements[i];
             assert_let_statement(statement, test);
         }
     }
 
-    fn assert_let_statement(statement: Statement, name: &str) {
+    fn assert_let_statement(statement: Box<dyn StatementNode>, name: &str) {
         let statement_literal = statement.token_literal();
-        if statement_literal != "let" {
-            panic!(
-                "statement.token_literal() not 'let'. got={}",
-                statement_literal
-            );
-        }
+        assert_eq!(statement_literal, "let");
 
         let let_ = match statement {
-            Statement::Let(l) => l,
+            l @ LetStatement { .. } => l,
             _ => panic!("statement not a Statement::Let. got={:?}", statement),
         };
 
         assert_eq!(let_.name.value, name);
 
-        // TODO - add this line - moliva - 2023/05/30
-        // assert_eq!(let_.name.token_literal(), name);
+        let name_ = let_.name;
+        name_.token_literal();
+        assert_eq!(name_.token_literal(), name);
 
         todo!();
     }
