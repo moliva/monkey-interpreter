@@ -41,6 +41,40 @@ pub enum Token {
     True,
     False,
 }
+impl Token {
+    pub(crate) fn literal(&self) -> String {
+        match self {
+            Token::EOF => "\0",
+            Token::Ident(l) => l,
+            Token::Int(l) => l,
+            Token::Assign => "=",
+            Token::Plus => "+",
+            Token::Minus => "-",
+            Token::Bang => "!",
+            Token::Asterisk => "*",
+            Token::Slash => "/",
+            Token::Lt => "<",
+            Token::Gt => ">",
+            Token::Eq => "==",
+            Token::NotEq => "!=",
+            Token::Comma => ",",
+            Token::Semicolon => ";",
+            Token::LParen => "(",
+            Token::RParen => ")",
+            Token::LBrace => "{",
+            Token::RBrace => "}",
+            Token::Function => "fn",
+            Token::Let => "let",
+            Token::If => "if",
+            Token::Else => "else",
+            Token::Return => "return",
+            Token::True => "true",
+            Token::False => "false",
+            Token::Illegal(l) => return std::str::from_utf8(&[*l]).unwrap().to_owned(),
+        }
+        .to_owned()
+    }
+}
 
 lazy_static! {
     static ref KEYWORDS: HashMap<&'static str, Token> = {
