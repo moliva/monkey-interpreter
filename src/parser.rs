@@ -72,18 +72,19 @@ impl Parser {
     fn expect_peek(&mut self, expected: Token) -> bool {
         if std::mem::discriminant(&self.peek_token) == std::mem::discriminant(&expected) {
             self.next_token();
-            return true;
+            true
         } else {
             self.peek_error(expected);
-            return false;
+            false
         }
     }
 
     fn parse_statement(&mut self) -> Option<Statement> {
         use Token::*;
         match self.current_token {
-            Let => self.parset_let_statement(),
+            Let => self.parse_let_statement(),
             Return => self.parse_return_statement(),
+            // If  => self.parse_if_statement(),
             _ => self.parse_expression_statement(),
         }
     }
@@ -96,9 +97,10 @@ impl Parser {
         self.prefix_parse_fns.insert(token, prefix_parse_fn);
     }
 
-    fn parset_let_statement(&mut self) -> Option<Statement> {
+    fn parse_let_statement(&mut self) -> Option<Statement> {
         let token = self.current_token.clone();
 
+        // TODO - avoid creating empty tokens - moliva - 2024/03/01
         if !self.expect_peek(Token::Ident("".to_owned())) {
             return None;
         }
@@ -122,6 +124,7 @@ impl Parser {
             name,
             value: Expression::Identifier(Identifier {
                 token: Token::Assign,
+                // TODO - result of expresssion parsed above - moliva - 2024/03/02
                 value: "".to_owned(),
             }),
         });
@@ -250,7 +253,7 @@ let foobar = 838383;
             );
         }
 
-        let tests = vec!["x", "y", "foobar"];
+        let tests = ["x", "y", "foobar"];
         for (i, test) in tests.iter().enumerate() {
             let statement = program.statements[i].clone();
             assert_let_statement(statement, test);
