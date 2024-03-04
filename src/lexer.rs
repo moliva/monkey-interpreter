@@ -1,5 +1,6 @@
 use crate::token::{lookup_ident, Token};
 
+#[derive(Default)]
 pub struct Lexer {
     input: Vec<u8>,
     /// current position to input (points to curent char)
@@ -14,10 +15,9 @@ impl Lexer {
     pub fn new(input: &str) -> Self {
         let mut lexer = Self {
             input: input.to_owned().into_bytes(),
-            position: Default::default(),
-            read_position: Default::default(),
-            current: Default::default(),
+            ..Default::default()
         };
+
         lexer.read_char();
 
         lexer

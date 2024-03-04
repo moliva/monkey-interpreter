@@ -63,6 +63,7 @@ pub(crate) enum Expression {
     Identifier(Identifier),
     IntegerLiteral(IntegerLiteral),
     PrefixExpression(PrefixExpression),
+    InfixExpression(InfixExpression),
 }
 
 impl Expression {
@@ -71,6 +72,7 @@ impl Expression {
             Expression::Identifier(Identifier { token, .. }) => token.literal(),
             Expression::IntegerLiteral(IntegerLiteral { token, .. }) => token.literal(),
             Expression::PrefixExpression(PrefixExpression { token, .. }) => token.literal(),
+            Expression::InfixExpression(InfixExpression { token, .. }) => token.literal(),
         }
     }
 
@@ -79,7 +81,31 @@ impl Expression {
             Expression::Identifier(i) => i.string(),
             Expression::IntegerLiteral(i) => i.string(),
             Expression::PrefixExpression(i) => i.string(),
+            Expression::InfixExpression(i) => i.string(),
         }
+    }
+}
+
+#[derive(Debug, Clone)]
+pub(crate) struct InfixExpression {
+    pub token: Token,
+    pub left: Box<Expression>,
+    pub operator: String,
+    pub right: Box<Expression>,
+}
+
+impl InfixExpression {
+    pub fn token_literal(&self) -> String {
+        self.token.literal()
+    }
+
+    pub fn string(&self) -> String {
+        format!(
+            "({} {} {})",
+            self.left.string(),
+            self.operator,
+            self.right.string()
+        )
     }
 }
 
@@ -145,6 +171,8 @@ impl Program {
     }
 
     pub fn string(&self) -> String {
-        self.statements.iter().map(|s| s.string()).join("\n")
+        // TODO - check this - moliva - 2024/03/04
+        // self.statements.iter().map(|s| s.string()).join("\n")
+        self.statements.iter().map(|s| s.string()).join("")
     }
 }
