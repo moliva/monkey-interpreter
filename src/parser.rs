@@ -1,4 +1,5 @@
 use std::collections::HashMap;
+use std::mem::Discriminant;
 
 use crate::{
     ast::{Expression, ExpressionStatement, Identifier, Let, Program, Return, Statement},
@@ -6,7 +7,7 @@ use crate::{
     token::Token,
 };
 
-type PrefixParseFn = fn() -> Expression;
+type PrefixParseFn = fn(p: &mut Parser) -> Expression;
 type InfixParseFn = fn(Expression) -> Expression;
 
 struct Parser {
@@ -17,7 +18,7 @@ struct Parser {
 
     pub errors: Vec<String>,
 
-    prefix_parse_fns: HashMap<Token, PrefixParseFn>,
+    prefix_parse_fns: HashMap<Discriminant<Token>, PrefixParseFn>,
     infix_parse_fns: HashMap<Token, InfixParseFn>,
 }
 
@@ -26,9 +27,11 @@ impl Parser {
         let current_token = lexer.next_token();
         let peek_token = lexer.next_token();
 
-        let mut prefix_parse_fns = HashMap::default();
-        // TODO - review this - moliva - 2023/06/03
-        // prefix_parse_fns.insert(Token::Ident("".to_owned()), parse_identifier);
+        let mut prefix_parse_fns = HashMap::<Discriminant<Token>, PrefixParseFn, _>::default();
+        prefix_parse_fns.insert(
+            std::mem::discriminant(&Token::Ident("".to_owned())),
+            Self::parse_identifier,
+        );
 
         Self {
             lexer,
@@ -38,6 +41,13 @@ impl Parser {
             prefix_parse_fns,
             infix_parse_fns: HashMap::default(),
         }
+    }
+
+    fn parse_identifier(&mut self) -> Expression {
+        let token = self.current_token.clone();
+        let value = self.current_token.literal();
+
+        Expression::Identifier(Identifier { token, value })
     }
 
     pub fn peek_error(&mut self, token: Token) {
@@ -84,7 +94,6 @@ impl Parser {
         match self.current_token {
             Let => self.parse_let_statement(),
             Return => self.parse_return_statement(),
-            // If  => self.parse_if_statement(),
             _ => self.parse_expression_statement(),
         }
     }
@@ -94,7 +103,8 @@ impl Parser {
     }
 
     fn register_prefix(&mut self, token: Token, prefix_parse_fn: PrefixParseFn) {
-        self.prefix_parse_fns.insert(token, prefix_parse_fn);
+        self.prefix_parse_fns
+            .insert(std::mem::discriminant(&token), prefix_parse_fn);
     }
 
     fn parse_let_statement(&mut self) -> Option<Statement> {
@@ -115,16 +125,18 @@ impl Parser {
         }
 
         // TODO - skipping expressions - moliva - 2023/06/02
+        // let value = self.parse_expression(Precedence::Call);
         while self.current_token != Token::Semicolon {
             self.next_token();
         }
 
-        let mut statement = Statement::Let(Let {
+        let statement = Statement::Let(Let {
             token,
             name,
             value: Expression::Identifier(Identifier {
                 token: Token::Assign,
                 // TODO - result of expresssion parsed above - moliva - 2024/03/02
+                // value,
                 value: "".to_owned(),
             }),
         });
@@ -154,7 +166,6 @@ impl Parser {
     fn parse_expression_statement(&mut self) -> Option<Statement> {
         let token = self.current_token.clone();
 
-        // TODO - review this - moliva - 2023/06/03
         let expression = self
             .parse_expression(Precedence::Lowest)
             .expect("valid expression");
@@ -170,13 +181,15 @@ impl Parser {
     }
 
     fn parse_expression(&mut self, precedence: Precedence) -> Option<Expression> {
-        let prefix = self.prefix_parse_fns.get(&self.current_token);
+        // let prefix = self.prefix_parse_fns.get(&self.current_token);
+        let discriminant = std::mem::discriminant(&self.current_token);
+        let prefix = self.prefix_parse_fns.get(&discriminant);
         let prefix = match prefix {
             Some(p) => p,
             None => return None,
         };
 
-        let left_expression = prefix();
+        let left_expression = prefix(self);
 
         Some(left_expression)
     }
@@ -184,12 +197,12 @@ impl Parser {
 
 enum Precedence {
     Lowest,
-    Equals,
-    LessGreater,
-    Sum,
-    Product,
-    Prefix,
-    Call,
+    Equals,      // ==
+    LessGreater, // > or <
+    Sum,         // +
+    Product,     // *
+    Prefix,      // -X or !X
+    Call,        // myFunction(X)
 }
 
 #[cfg(test)]
