@@ -275,8 +275,7 @@ impl Parser {
     }
 
     fn parse_expression(&mut self, precedence: Precedence) -> Option<Expression> {
-        let prefix = self.find_current_prefix_parse_fn();
-        let prefix = match prefix {
+        let prefix = match self.find_current_prefix_parse_fn() {
             Some(p) => p,
             None => {
                 self.errors.push(format!(
@@ -290,8 +289,7 @@ impl Parser {
         let mut left = prefix(self);
 
         while self.peek_token != Token::Semicolon && precedence < self.peek_precedence() {
-            let infix = self.find_peek_infix_parse_fn();
-            match infix {
+            match self.find_peek_infix_parse_fn() {
                 None => return left,
                 Some(infix) => {
                     self.next_token();
@@ -555,6 +553,44 @@ let foobar = 838383;
             assert_eq!(exp.operator, operator);
             test_integer_literal(&exp.right, integer_value);
         }
+    }
+
+    enum LitVal {
+        Int(i64),
+        String(String),
+    }
+
+    fn test_literal_expression(exp: &Expression, expected: LitVal) {
+        use LitVal::*;
+        match expected {
+            Int(v) => test_integer_literal(exp, v),
+            String(v) => test_identifier(exp, &v),
+            _ => panic!("type of exp not handle. got={:?}", exp),
+        }
+    }
+
+    fn test_infix_expression(exp: &Expression, left: LitVal, operator: &str, right: LitVal) {
+        let op_exp = match exp {
+            Expression::InfixExpression(e) => e,
+            _ => panic!(
+                "expression not a Expression::InfixExpression. got={:?}",
+                exp
+            ),
+        };
+
+        test_literal_expression(&op_exp.left, left);
+        assert_eq!(op_exp.operator, operator);
+        test_literal_expression(&op_exp.right, right);
+    }
+
+    fn test_identifier(exp: &Expression, value: &str) {
+        let identifier = match exp {
+            Expression::Identifier(i) => i,
+            _ => panic!("expression not a Expression::Identifier. got={:?}", exp),
+        };
+
+        assert_eq!(identifier.value, value);
+        assert_eq!(identifier.token_literal(), value);
     }
 
     fn test_integer_literal(exp: &Expression, value: i64) {
