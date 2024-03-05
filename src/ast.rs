@@ -62,6 +62,7 @@ pub(crate) struct Return {
 pub(crate) enum Expression {
     Identifier(Identifier),
     IntegerLiteral(IntegerLiteral),
+    Boolean(Boolean),
     PrefixExpression(PrefixExpression),
     InfixExpression(InfixExpression),
 }
@@ -71,6 +72,7 @@ impl Expression {
         match self {
             Expression::Identifier(Identifier { token, .. }) => token.literal(),
             Expression::IntegerLiteral(IntegerLiteral { token, .. }) => token.literal(),
+            Expression::Boolean(Boolean { token, .. }) => token.literal(),
             Expression::PrefixExpression(PrefixExpression { token, .. }) => token.literal(),
             Expression::InfixExpression(InfixExpression { token, .. }) => token.literal(),
         }
@@ -80,6 +82,7 @@ impl Expression {
         match self {
             Expression::Identifier(i) => i.string(),
             Expression::IntegerLiteral(i) => i.string(),
+            Expression::Boolean(i) => i.string(),
             Expression::PrefixExpression(i) => i.string(),
             Expression::InfixExpression(i) => i.string(),
         }
@@ -123,6 +126,22 @@ impl PrefixExpression {
 
     pub fn string(&self) -> String {
         format!("({}{})", self.operator, self.right.string())
+    }
+}
+
+#[derive(Debug, Clone)]
+pub(crate) struct Boolean {
+    pub token: Token,
+    pub value: bool,
+}
+
+impl Boolean {
+    pub fn token_literal(&self) -> String {
+        self.token.literal()
+    }
+
+    pub fn string(&self) -> String {
+        self.token.literal()
     }
 }
 

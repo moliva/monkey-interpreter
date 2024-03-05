@@ -1,14 +1,7 @@
 use std::collections::HashMap;
 use std::mem::Discriminant;
 
-use crate::{
-    ast::{
-        Expression, ExpressionStatement, Identifier, InfixExpression, IntegerLiteral, Let,
-        PrefixExpression, Program, Return, Statement,
-    },
-    lexer::Lexer,
-    token::Token,
-};
+use crate::{ast::*, lexer::Lexer, token::Token};
 
 type PrefixParseFn = fn(p: &mut Parser) -> Option<Expression>;
 type InfixParseFn = fn(p: &mut Parser, Expression) -> Option<Expression>;
@@ -24,8 +17,6 @@ struct Parser {
     prefix_parse_fns: HashMap<Discriminant<Token>, PrefixParseFn>,
     infix_parse_fns: HashMap<Discriminant<Token>, InfixParseFn>,
 }
-
-// TODO - precedences map - moliva - 2024/03/04
 
 impl Parser {
     fn new(mut lexer: Lexer) -> Self {
@@ -45,6 +36,8 @@ impl Parser {
         // register prefix ops
         parser.register_prefix(Ident("".to_owned()), Self::parse_identifier);
         parser.register_prefix(Int("".to_owned()), Self::parse_integer_literal);
+        parser.register_prefix(True, Self::parse_boolean);
+        parser.register_prefix(False, Self::parse_boolean);
         parser.register_prefix(Bang, Self::parse_prefix_expression);
         parser.register_prefix(Minus, Self::parse_prefix_expression);
 
@@ -105,6 +98,13 @@ impl Parser {
                 right,
             })
         })
+    }
+
+    fn parse_boolean(&mut self) -> Option<Expression> {
+        let token = self.current_token.clone();
+        let literal = token.literal();
+        let value = "true" == literal;
+        Some(Expression::Boolean(Boolean { token, value }))
     }
 
     fn parse_integer_literal(&mut self) -> Option<Expression> {
@@ -393,6 +393,33 @@ let foobar = 838383;
             let statement = program.statements[i].clone();
             assert_let_statement(statement, test);
         }
+    }
+
+    #[test]
+    fn test_bool_expression() {
+        let input = "true;";
+
+        let lexer = Lexer::new(input);
+        let mut parser = Parser::new(lexer);
+
+        let program = parser.parse_program();
+        check_parser_errors(&parser);
+
+        assert_eq!(program.statements.len(), 1);
+
+        let statement = &program.statements[0];
+        let exp = match statement {
+            Statement::Expression(e) => e,
+            _ => panic!("statement not a Statement::Expression. got={:?}", statement),
+        };
+
+        let boolean = match &exp.expression {
+            Expression::Boolean(i) => i,
+            _ => panic!("expression not a Expression::Boolean. got={:?}", exp),
+        };
+
+        assert_eq!(boolean.value, true);
+        assert_eq!(boolean.token_literal(), "true");
     }
 
     #[test]
