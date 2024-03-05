@@ -32,47 +32,28 @@ impl Parser {
         let current_token = lexer.next_token();
         let peek_token = lexer.next_token();
 
-        let mut prefix_parse_fns = HashMap::<Discriminant<Token>, PrefixParseFn, _>::default();
-        prefix_parse_fns.insert(
-            std::mem::discriminant(&Token::Ident("".to_owned())),
-            Self::parse_identifier,
-        );
-        prefix_parse_fns.insert(
-            std::mem::discriminant(&Token::Int("".to_owned())),
-            Self::parse_integer_literal,
-        );
-        prefix_parse_fns.insert(
-            std::mem::discriminant(&Token::Bang),
-            Self::parse_prefix_expression,
-        );
-        prefix_parse_fns.insert(
-            std::mem::discriminant(&Token::Minus),
-            Self::parse_prefix_expression,
-        );
-
-        let mut infix_parse_fns = HashMap::<Discriminant<Token>, InfixParseFn, _>::default();
-        let infix_operators = [
-            Token::Eq,
-            Token::NotEq,
-            Token::Lt,
-            Token::Gt,
-            Token::Plus,
-            Token::Minus,
-            Token::Slash,
-            Token::Asterisk,
-        ];
-        for token in infix_operators.iter() {
-            infix_parse_fns.insert(std::mem::discriminant(token), Self::parse_infix_expression);
-        }
-
-        Self {
+        let mut parser = Self {
             lexer,
             current_token,
             peek_token,
             errors: Vec::default(),
-            prefix_parse_fns,
-            infix_parse_fns,
+            prefix_parse_fns: HashMap::default(),
+            infix_parse_fns: HashMap::default(),
+        };
+
+        use Token::*;
+        // register prefix ops
+        parser.register_prefix(Ident("".to_owned()), Self::parse_identifier);
+        parser.register_prefix(Int("".to_owned()), Self::parse_integer_literal);
+        parser.register_prefix(Bang, Self::parse_prefix_expression);
+        parser.register_prefix(Minus, Self::parse_prefix_expression);
+
+        // register infix ops
+        for token in [Eq, NotEq, Lt, Gt, Plus, Minus, Slash, Asterisk] {
+            parser.register_infix(token, Self::parse_infix_expression);
         }
+
+        parser
     }
 
     fn parse_infix_expression(&mut self, left: Expression) -> Option<Expression> {
@@ -188,6 +169,7 @@ impl Parser {
 
     fn parse_statement(&mut self) -> Option<Statement> {
         use Token::*;
+
         match self.current_token {
             Let => self.parse_let_statement(),
             Return => self.parse_return_statement(),
@@ -195,13 +177,11 @@ impl Parser {
         }
     }
 
-    // TODO - unused - moliva - 2024/03/04
     fn register_infix(&mut self, token: Token, infix_parse_fn: InfixParseFn) {
         self.infix_parse_fns
             .insert(std::mem::discriminant(&token), infix_parse_fn);
     }
 
-    // TODO - unused - moliva - 2024/03/04
     fn register_prefix(&mut self, token: Token, prefix_parse_fn: PrefixParseFn) {
         self.prefix_parse_fns
             .insert(std::mem::discriminant(&token), prefix_parse_fn);
@@ -280,10 +260,22 @@ impl Parser {
         }))
     }
 
-    fn parse_expression(&mut self, precedence: Precedence) -> Option<Expression> {
+    fn find_current_prefix_parse_fn(&self) -> Option<PrefixParseFn> {
         let discriminant = std::mem::discriminant(&self.current_token);
         let prefix = self.prefix_parse_fns.get(&discriminant);
 
+        prefix.cloned()
+    }
+
+    fn find_peek_infix_parse_fn(&self) -> Option<InfixParseFn> {
+        let discriminant = std::mem::discriminant(&self.peek_token);
+        let infix = self.infix_parse_fns.get(&discriminant);
+
+        infix.cloned()
+    }
+
+    fn parse_expression(&mut self, precedence: Precedence) -> Option<Expression> {
+        let prefix = self.find_current_prefix_parse_fn();
         let prefix = match prefix {
             Some(p) => p,
             None => {
@@ -298,12 +290,10 @@ impl Parser {
         let mut left = prefix(self);
 
         while self.peek_token != Token::Semicolon && precedence < self.peek_precedence() {
-            let discriminant = std::mem::discriminant(&self.peek_token);
-            let infix = self.infix_parse_fns.get(&discriminant);
+            let infix = self.find_peek_infix_parse_fn();
             match infix {
                 None => return left,
                 Some(infix) => {
-                    let infix = *infix;
                     self.next_token();
 
                     left = infix(self, left.unwrap());
