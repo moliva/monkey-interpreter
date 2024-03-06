@@ -19,30 +19,49 @@ pub(crate) enum Statement {
     Let(Let),
     Return(Return),
     Expression(ExpressionStatement),
+    Block(BlockStatement),
 }
 
 impl Statement {
     pub fn token_literal(&self) -> String {
+        use Statement::*;
+
         match self {
-            Statement::Let(Let { token, .. }) => token.literal(),
-            Statement::Return(Return { token, .. }) => token.literal(),
-            Statement::Expression(ExpressionStatement { token, .. }) => token.literal(),
+            Let(self::Let { token, .. }) => token.literal(),
+            Return(self::Return { token, .. }) => token.literal(),
+            Expression(ExpressionStatement { token, .. }) => token.literal(),
+            Block(BlockStatement { token, .. }) => token.literal(),
         }
     }
 
     pub fn string(&self) -> String {
+        use Statement::*;
+
         match self {
-            l @ Statement::Let(li) => format!(
+            l @ Let(li) => format!(
                 "{} {} = {};",
                 l.token_literal(),
                 li.name.string(),
                 li.value.string()
             ),
-            r @ Statement::Return(rs) => {
+            r @ Return(rs) => {
                 format!("{} {};", r.token_literal(), rs.return_value.string())
             }
-            Statement::Expression(es) => es.expression.string(),
+            Expression(es) => es.expression.string(),
+            Block(bs) => bs.string(),
         }
+    }
+}
+
+#[derive(Debug, Clone)]
+pub(crate) struct BlockStatement {
+    pub token: Token,
+    pub statements: Vec<Statement>,
+}
+
+impl BlockStatement {
+    pub fn string(&self) -> String {
+        self.statements.iter().map(|s| s.string()).join("")
     }
 }
 
@@ -65,6 +84,7 @@ pub(crate) enum Expression {
     Boolean(Boolean),
     PrefixExpression(PrefixExpression),
     InfixExpression(InfixExpression),
+    IfExpression(IfExpression),
 }
 
 impl Expression {
@@ -75,6 +95,7 @@ impl Expression {
             Expression::Boolean(Boolean { token, .. }) => token.literal(),
             Expression::PrefixExpression(PrefixExpression { token, .. }) => token.literal(),
             Expression::InfixExpression(InfixExpression { token, .. }) => token.literal(),
+            Expression::IfExpression(IfExpression { token, .. }) => token.literal(),
         }
     }
 
@@ -85,7 +106,39 @@ impl Expression {
             Expression::Boolean(i) => i.string(),
             Expression::PrefixExpression(i) => i.string(),
             Expression::InfixExpression(i) => i.string(),
+            Expression::IfExpression(i) => i.string(),
         }
+    }
+}
+
+#[derive(Debug, Clone)]
+pub(crate) struct IfExpression {
+    pub token: Token,
+    pub condition: Box<Expression>,
+    pub consequence: BlockStatement,
+    pub alternative: Option<BlockStatement>,
+}
+
+impl IfExpression {
+    pub fn token_literal(&self) -> String {
+        self.token.literal()
+    }
+
+    pub fn string(&self) -> String {
+        let mut s = format!(
+            "if {} {}",
+            self.condition.string(),
+            self.consequence.string(),
+        );
+
+        if self.alternative.is_some() {
+            s.push_str(&format!(
+                "else {}",
+                self.alternative.as_ref().unwrap().string()
+            ));
+        }
+
+        s
     }
 }
 
