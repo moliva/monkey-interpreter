@@ -319,11 +319,7 @@ impl Parser {
     fn parse_expression_statement(&mut self) -> Option<Statement> {
         let token = self.current_token.clone();
 
-        let expression = self.parse_expression(Precedence::Lowest);
-        if expression.is_none() {
-            return None;
-        }
-        let expression = expression.unwrap();
+        let expression = self.parse_expression(Precedence::Lowest)?;
 
         if self.peek_token == Token::Semicolon {
             self.next_token();
@@ -439,6 +435,7 @@ impl Parser {
         }
 
         if !self.expect_peek(Token::RParen) {
+            // TODO - this should return an error here - moliva - 2024/03/06
             // return None;
             panic!("expected ')' to close function paramters list");
         }
@@ -661,7 +658,7 @@ let foobar = 838383;
             _ => panic!("expression not a Expression::Boolean. got={:?}", exp),
         };
 
-        assert_eq!(boolean.value, true);
+        assert!(boolean.value);
         assert_eq!(boolean.token_literal(), "true");
     }
 
@@ -898,6 +895,48 @@ let foobar = 838383;
             "+",
             LitVal::String("y".to_owned()),
         );
+    }
+
+    #[test]
+    fn test_function_parameter_parsing() {
+        let tests = [
+            ("fn() {};", vec![]),
+            ("fn(x) {};", vec!["x"]),
+            ("fn(x, y, z) {};", vec!["x", "y", "z"]),
+        ];
+
+        for (input, expected_params) in tests {
+            let lexer = Lexer::new(input);
+            let mut parser = Parser::new(lexer);
+
+            let program = parser.parse_program();
+            check_parser_errors(&parser);
+
+            assert_eq!(program.statements.len(), 1);
+
+            let statement = &program.statements[0];
+            let exp = match statement {
+                Statement::Expression(e) => e,
+                _ => panic!("statement not a Statement::Expression. got={:?}", statement),
+            };
+
+            let exp = match &exp.expression {
+                Expression::FunctionLiteral(e) => e,
+                _ => panic!(
+                    "expression not a Expression::FunctionLiteral. got={:?}",
+                    exp
+                ),
+            };
+
+            assert_eq!(exp.parameters.len(), expected_params.len());
+
+            for (i, identifier) in expected_params.into_iter().enumerate() {
+                test_literal_expression(
+                    &Expression::Identifier(exp.parameters[i].clone()),
+                    LitVal::String(identifier.to_owned()),
+                );
+            }
+        }
     }
 
     // *****************************************************************************************************
