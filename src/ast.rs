@@ -85,6 +85,7 @@ pub(crate) enum Expression {
     PrefixExpression(PrefixExpression),
     InfixExpression(InfixExpression),
     IfExpression(IfExpression),
+    FunctionLiteral(FunctionLiteral),
 }
 
 impl Expression {
@@ -96,6 +97,7 @@ impl Expression {
             Expression::PrefixExpression(PrefixExpression { token, .. }) => token.literal(),
             Expression::InfixExpression(InfixExpression { token, .. }) => token.literal(),
             Expression::IfExpression(IfExpression { token, .. }) => token.literal(),
+            Expression::FunctionLiteral(FunctionLiteral { token, .. }) => token.literal(),
         }
     }
 
@@ -107,6 +109,7 @@ impl Expression {
             Expression::PrefixExpression(i) => i.string(),
             Expression::InfixExpression(i) => i.string(),
             Expression::IfExpression(i) => i.string(),
+            Expression::FunctionLiteral(i) => i.string(),
         }
     }
 }
@@ -195,6 +198,29 @@ impl Boolean {
 
     pub fn string(&self) -> String {
         self.token.literal()
+    }
+}
+
+#[derive(Debug, Clone)]
+pub(crate) struct FunctionLiteral {
+    pub token: Token,
+    pub parameters: Vec<Identifier>,
+    pub body: BlockStatement,
+}
+
+impl FunctionLiteral {
+    pub fn token_literal(&self) -> String {
+        self.token.literal()
+    }
+
+    pub fn string(&self) -> String {
+        let params = self.parameters.iter().map(Identifier::string).join(", ");
+        format!(
+            "{}({}) {}",
+            self.token_literal(),
+            params,
+            self.body.string()
+        )
     }
 }
 

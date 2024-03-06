@@ -32,23 +32,37 @@ impl Parser {
             infix_parse_fns: HashMap::default(),
         };
 
-        use Token::*;
-        // register prefix ops
-        parser.register_prefix(Ident("".to_owned()), Self::parse_identifier);
-        parser.register_prefix(Int("".to_owned()), Self::parse_integer_literal);
-        parser.register_prefix(True, Self::parse_boolean);
-        parser.register_prefix(False, Self::parse_boolean);
-        parser.register_prefix(Bang, Self::parse_prefix_expression);
-        parser.register_prefix(Minus, Self::parse_prefix_expression);
-        parser.register_prefix(LParen, Self::parse_grouped_expression);
-        parser.register_prefix(If, Self::parse_if_expression);
+        parser.register_prefix_fns();
 
         // register infix ops
+        use Token::*;
         for token in [Eq, NotEq, Lt, Gt, Plus, Minus, Slash, Asterisk] {
             parser.register_infix(token, Self::parse_infix_expression);
         }
 
         parser
+    }
+
+    fn parse_function_literal(&mut self) -> Option<Expression> {
+        let token = self.current_token.clone();
+
+        if !self.expect_peek(Token::LParen) {
+            return None;
+        }
+
+        let parameters = self.parse_function_parameters();
+
+        if !self.expect_peek(Token::LBrace) {
+            return None;
+        }
+
+        let body = self.parse_block_statement();
+
+        Some(Expression::FunctionLiteral(FunctionLiteral {
+            token,
+            parameters,
+            body,
+        }))
     }
 
     fn parse_if_expression(&mut self) -> Option<Expression> {
@@ -305,9 +319,11 @@ impl Parser {
     fn parse_expression_statement(&mut self) -> Option<Statement> {
         let token = self.current_token.clone();
 
-        let expression = self
-            .parse_expression(Precedence::Lowest)
-            .expect("valid expression");
+        let expression = self.parse_expression(Precedence::Lowest);
+        if expression.is_none() {
+            return None;
+        }
+        let expression = expression.unwrap();
 
         if self.peek_token == Token::Semicolon {
             self.next_token();
@@ -379,6 +395,55 @@ impl Parser {
         }
 
         BlockStatement { token, statements }
+    }
+
+    fn register_prefix_fns(&mut self) {
+        use Token::*;
+
+        self.register_prefix(Ident("".to_owned()), Self::parse_identifier);
+        self.register_prefix(Int("".to_owned()), Self::parse_integer_literal);
+        self.register_prefix(True, Self::parse_boolean);
+        self.register_prefix(False, Self::parse_boolean);
+        self.register_prefix(Bang, Self::parse_prefix_expression);
+        self.register_prefix(Minus, Self::parse_prefix_expression);
+        self.register_prefix(LParen, Self::parse_grouped_expression);
+        self.register_prefix(If, Self::parse_if_expression);
+        self.register_prefix(Function, Self::parse_function_literal);
+    }
+
+    fn parse_function_parameters(&mut self) -> Vec<Identifier> {
+        let mut identifiers = Vec::default();
+
+        if self.peek_token == Token::RParen {
+            self.next_token();
+            return identifiers;
+        }
+
+        self.next_token();
+
+        identifiers.push(Identifier {
+            token: self.current_token.clone(),
+            value: self.current_token.literal(),
+        });
+
+        while self.peek_token == Token::Comma {
+            // the comma itself
+            self.next_token();
+            // until next identifier
+            self.next_token();
+
+            identifiers.push(Identifier {
+                token: self.current_token.clone(),
+                value: self.current_token.literal(),
+            });
+        }
+
+        if !self.expect_peek(Token::RParen) {
+            // return None;
+            panic!("expected ')' to close function paramters list");
+        }
+
+        identifiers
     }
 }
 
@@ -783,6 +848,65 @@ let foobar = 838383;
         }
     }
 
+    #[test]
+    fn test_function_literal_parsing() {
+        let input = "fn(x, y) { x + y; }";
+
+        // TODO - avoid repeating this over and over! - moliva - 2024/03/06
+        let lexer = Lexer::new(input);
+        let mut parser = Parser::new(lexer);
+
+        let program = parser.parse_program();
+        check_parser_errors(&parser);
+
+        assert_eq!(program.statements.len(), 1);
+
+        let statement = &program.statements[0];
+        let exp = match statement {
+            Statement::Expression(e) => e,
+            _ => panic!("statement not a Statement::Expression. got={:?}", statement),
+        };
+
+        let exp = match &exp.expression {
+            Expression::FunctionLiteral(e) => e,
+            _ => panic!(
+                "expression not a Expression::FunctionLiteral. got={:?}",
+                exp
+            ),
+        };
+
+        assert_eq!(exp.parameters.len(), 2);
+        // TODO - omg! - moliva - 2024/03/06
+        test_literal_expression(
+            &Expression::Identifier(exp.parameters[0].clone()),
+            LitVal::String("x".to_owned()),
+        );
+        test_literal_expression(
+            &Expression::Identifier(exp.parameters[1].clone()),
+            LitVal::String("y".to_owned()),
+        );
+
+        assert_eq!(exp.body.statements.len(), 1);
+        let body_statement = match &exp.body.statements[0] {
+            Statement::Expression(e) => e,
+            _ => panic!("statement not a Statement::Expression. got={:?}", statement),
+        };
+
+        test_infix_expression(
+            &body_statement.expression,
+            LitVal::String("x".to_owned()),
+            "+",
+            LitVal::String("y".to_owned()),
+        );
+    }
+
+    // *****************************************************************************************************
+    // *************** Utils ***************
+    // *****************************************************************************************************
+
+    /***
+     * Used for test helpers below supporting different types
+     */
     enum LitVal {
         Int(i64),
         String(String),
