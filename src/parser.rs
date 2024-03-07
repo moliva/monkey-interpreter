@@ -33,12 +33,7 @@ impl Parser {
         };
 
         parser.register_prefix_fns();
-
-        // register infix ops
-        use Token::*;
-        for token in [Eq, NotEq, Lt, Gt, Plus, Minus, Slash, Asterisk] {
-            parser.register_infix(token, Self::parse_infix_expression);
-        }
+        parser.register_infix_fns();
 
         parser
     }
@@ -108,6 +103,49 @@ impl Parser {
             consequence,
             alternative,
         }))
+    }
+
+    fn parse_call_expression(&mut self, function: Expression) -> Option<Expression> {
+        let token = self.current_token.clone();
+
+        let function = Box::new(function);
+        let arguments = self.parse_call_arguments();
+
+        Some(Expression::CallExpression(CallExpression {
+            token,
+            function,
+            arguments,
+        }))
+    }
+
+    fn parse_call_arguments(&mut self) -> Vec<Expression> {
+        let mut args = Vec::default();
+
+        if self.peek_token == Token::RParen {
+            self.next_token();
+            return args;
+        }
+
+        self.next_token();
+        args.push(
+            self.parse_expression(Precedence::Lowest)
+                .expect("expression"),
+        );
+
+        while self.peek_token == Token::Comma {
+            self.next_token();
+            self.next_token();
+            args.push(
+                self.parse_expression(Precedence::Lowest)
+                    .expect("expression"),
+            );
+        }
+
+        if !self.expect_peek(Token::RParen) {
+            panic!("expected ')");
+        }
+
+        args
     }
 
     fn parse_infix_expression(&mut self, left: Expression) -> Option<Expression> {
@@ -442,6 +480,15 @@ impl Parser {
 
         identifiers
     }
+
+    fn register_infix_fns(&mut self) {
+        use Token::*;
+        for token in [Eq, NotEq, Lt, Gt, Plus, Minus, Slash, Asterisk] {
+            self.register_infix(token, Self::parse_infix_expression);
+        }
+
+        self.register_infix(LParen, Self::parse_call_expression);
+    }
 }
 
 const fn fetch_precedence(token_type: &Token) -> Option<Precedence> {
@@ -453,6 +500,7 @@ const fn fetch_precedence(token_type: &Token) -> Option<Precedence> {
         Lt | Gt => LessGreater,
         Plus | Minus => Sum,
         Slash | Asterisk => Product,
+        LParen => Call,
         _ => return None,
     })
 }
@@ -794,6 +842,16 @@ let foobar = 838383;
             ("2 / (5 + 5)", "(2 / (5 + 5))"),
             ("-(5 + 5)", "(-(5 + 5))"),
             ("!(true == true)", "(!(true == true))"),
+            // call expressions
+            ("a + add(b * c) + d", "((a + add((b * c))) + d)"),
+            (
+                "add(a, b, 1, 2 * 3, 4 + 5, add(6, 7 * 8))",
+                "add(a, b, 1, (2 * 3), (4 + 5), add(6, (7 * 8)))",
+            ),
+            (
+                "add(a + b + c * d / f + g)",
+                "add((((a + b) + ((c * d) / f)) + g))",
+            ),
         ];
 
         for (input, expected) in tests {
@@ -807,6 +865,8 @@ let foobar = 838383;
             assert_eq!(actual, expected);
         }
     }
+
+    // TODO - copy test call arguments in the go code - moliva - 2024/03/07
 
     #[test]
     fn test_parsing_prefix_expressions() {
@@ -939,11 +999,42 @@ let foobar = 838383;
         }
     }
 
+    #[test]
+    fn test_call_expression_parsing() {
+        let input = "add(1, 2 * 3, 4 + 5);";
+
+        let lexer = Lexer::new(input);
+        let mut parser = Parser::new(lexer);
+
+        let program = parser.parse_program();
+        check_parser_errors(&parser);
+
+        assert_eq!(program.statements.len(), 1);
+
+        let statement = &program.statements[0];
+        let exp = match statement {
+            Statement::Expression(e) => e,
+            _ => panic!("statement not a Statement::Expression. got={:?}", statement),
+        };
+
+        let exp = match &exp.expression {
+            Expression::CallExpression(e) => e,
+            _ => panic!("expression not a Expression::CallExpression. got={:?}", exp),
+        };
+
+        test_identifier(&exp.function, "add");
+
+        assert_eq!(exp.arguments.len(), 3);
+        test_literal_expression(&exp.arguments[0], LitVal::Int(1));
+        test_infix_expression(&exp.arguments[1], LitVal::Int(2), "*", LitVal::Int(3));
+        test_infix_expression(&exp.arguments[2], LitVal::Int(4), "+", LitVal::Int(5));
+    }
+
     // *****************************************************************************************************
     // *************** Utils ***************
     // *****************************************************************************************************
 
-    /***
+    /**
      * Used for test helpers below supporting different types
      */
     enum LitVal {

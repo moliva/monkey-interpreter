@@ -86,6 +86,7 @@ pub(crate) enum Expression {
     InfixExpression(InfixExpression),
     IfExpression(IfExpression),
     FunctionLiteral(FunctionLiteral),
+    CallExpression(CallExpression),
 }
 
 impl Expression {
@@ -98,6 +99,7 @@ impl Expression {
             Expression::InfixExpression(InfixExpression { token, .. }) => token.literal(),
             Expression::IfExpression(IfExpression { token, .. }) => token.literal(),
             Expression::FunctionLiteral(FunctionLiteral { token, .. }) => token.literal(),
+            Expression::CallExpression(CallExpression { token, .. }) => token.literal(),
         }
     }
 
@@ -110,7 +112,28 @@ impl Expression {
             Expression::InfixExpression(i) => i.string(),
             Expression::IfExpression(i) => i.string(),
             Expression::FunctionLiteral(i) => i.string(),
+            Expression::CallExpression(i) => i.string(),
         }
+    }
+}
+
+#[derive(Debug, Clone)]
+pub(crate) struct CallExpression {
+    pub token: Token, // the '(' token
+    // TODO - should we verify the kind of expression below? - moliva - 2024/03/07
+    pub function: Box<Expression>, // Identifier or FunctionLiteral
+    pub arguments: Vec<Expression>,
+}
+
+impl CallExpression {
+    pub fn token_literal(&self) -> String {
+        self.token.literal()
+    }
+
+    pub fn string(&self) -> String {
+        let args = self.arguments.iter().map(Expression::string).join(", ");
+
+        format!("{}({args})", self.function.string())
     }
 }
 
