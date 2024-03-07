@@ -315,24 +315,15 @@ impl Parser {
             return None;
         }
 
-        // TODO - skipping expressions - moliva - 2023/06/02
-        // let value = self.parse_expression(Precedence::Call);
-        while self.current_token != Token::Semicolon {
+        self.next_token();
+
+        let value = self.parse_expression(Precedence::Lowest)?;
+
+        if self.peek_token == Token::Semicolon {
             self.next_token();
         }
 
-        let statement = Statement::Let(Let {
-            token,
-            name,
-            value: Expression::Identifier(Identifier {
-                token: Token::Assign,
-                // TODO - result of expresssion parsed above - moliva - 2024/03/02
-                // value,
-                value: "".to_owned(),
-            }),
-        });
-
-        Some(statement)
+        Some(Statement::Let(Let { token, name, value }))
     }
 
     fn parse_return_statement(&mut self) -> Option<Statement> {
@@ -340,17 +331,15 @@ impl Parser {
 
         self.next_token();
 
-        // TODO - skipping the expressions until semicolon - moliva - 2023/06/03
-        while self.current_token != Token::Semicolon {
+        let return_value = self.parse_expression(Precedence::Lowest)?;
+
+        if self.peek_token == Token::Semicolon {
             self.next_token();
         }
 
         Some(Statement::Return(Return {
             token,
-            return_value: Expression::Identifier(Identifier {
-                token: Token::Let,
-                value: "".to_owned(),
-            }),
+            return_value,
         }))
     }
 
@@ -527,28 +516,32 @@ mod tests {
 
     #[test]
     fn test_return_statements() {
-        let input = r#"
-return 5;
-return 10;
-return 993322;
-"#;
+        // (input, expected_value)
+        let tests = [
+            ("return 5;", LitVal::Integer(5)),
+            ("return true;", LitVal::Boolean(true)),
+            ("return asdf;", LitVal::Identifier("asdf".to_owned())),
+        ];
 
-        let program = parse_program(input);
+        for (input, expected_value) in tests {
+            let program = parse_program(input);
 
-        if program.statements.len() != 3 {
-            panic!(
-                "program.statements does not contain 3 statement. got={}",
-                program.statements.len()
-            );
-        }
+            if program.statements.len() != 1 {
+                panic!(
+                    "program.statements does not contain 1 statement. got={}",
+                    program.statements.len()
+                );
+            }
 
-        for statement in program.statements.iter() {
+            let statement = &program.statements[0];
+
             let return_statement = match statement {
-                r @ Statement::Return(_) => r,
+                Statement::Return(r) => r,
                 _ => panic!("not a return statement"),
             };
 
-            assert_eq!(return_statement.token_literal(), "return");
+            assert_eq!(return_statement.token.literal(), "return");
+            test_literal_expression(&return_statement.return_value, expected_value);
         }
     }
 
@@ -645,25 +638,40 @@ return 993322;
 
     #[test]
     fn test_let_statements() {
-        let input = r#"
-let x = 5;
-let y = 10;
-let foobar = 838383;
-"#;
+        // (input, expected_identifier, expected_value)
+        let tests = [
+            ("let x = 5;", "x", LitVal::Integer(5)),
+            ("let y = true;", "y", LitVal::Boolean(true)),
+            (
+                "let foobar = y;",
+                "foobar",
+                LitVal::Identifier("y".to_owned()),
+            ),
+        ];
 
-        let program = parse_program(input);
+        for (input, expected_identifier, expected_value) in tests {
+            let program = parse_program(input);
 
-        if program.statements.len() != 3 {
-            panic!(
-                "program.statements does not contain 3 statement. got={}",
-                program.statements.len()
+            if program.statements.len() != 1 {
+                panic!(
+                    "program.statements does not contain 1 statement. got={}",
+                    program.statements.len()
+                );
+            }
+
+            let statement = &program.statements[0];
+
+            let exp = match statement {
+                Statement::Let(e) => e,
+                _ => panic!("expected Statement::Let, got {:?}", statement),
+            };
+
+            // TODO - ugly thing here - moliva - 2024/03/07
+            test_identifier(
+                &Expression::Identifier(exp.name.clone()),
+                expected_identifier,
             );
-        }
-
-        let tests = ["x", "y", "foobar"];
-        for (i, test) in tests.iter().enumerate() {
-            let statement = program.statements[i].clone();
-            assert_let_statement(statement, test);
+            test_literal_expression(&exp.value, expected_value);
         }
     }
 
