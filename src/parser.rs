@@ -519,7 +519,7 @@ enum Precedence {
 #[cfg(test)]
 mod tests {
     use crate::{
-        ast::{Expression, Statement},
+        ast::{Expression, Program, Statement},
         lexer::Lexer,
     };
 
@@ -533,11 +533,7 @@ return 10;
 return 993322;
 "#;
 
-        let lexer = Lexer::new(input);
-        let mut parser = Parser::new(lexer);
-
-        let program = parser.parse_program();
-        check_parser_errors(&parser);
+        let program = parse_program(input);
 
         if program.statements.len() != 3 {
             panic!(
@@ -560,11 +556,7 @@ return 993322;
     fn test_if_expression() {
         let input = "if (x < y) { x }";
 
-        let lexer = Lexer::new(input);
-        let mut parser = Parser::new(lexer);
-
-        let program = parser.parse_program();
-        check_parser_errors(&parser);
+        let program = parse_program(input);
 
         assert_eq!(program.statements.len(), 1);
 
@@ -584,9 +576,9 @@ return 993322;
 
         test_infix_expression(
             &exp.condition,
-            LitVal::String("x".to_owned()),
+            LitVal::Identifier("x".to_owned()),
             "<",
-            LitVal::String("y".to_owned()),
+            LitVal::Identifier("y".to_owned()),
         );
         assert_eq!(exp.consequence.statements.len(), 1);
 
@@ -604,11 +596,7 @@ return 993322;
     fn test_if_else_expression() {
         let input = "if (x < y) { x } else { y }";
 
-        let lexer = Lexer::new(input);
-        let mut parser = Parser::new(lexer);
-
-        let program = parser.parse_program();
-        check_parser_errors(&parser);
+        let program = parse_program(input);
 
         assert_eq!(program.statements.len(), 1);
 
@@ -628,9 +616,9 @@ return 993322;
 
         test_infix_expression(
             &exp.condition,
-            LitVal::String("x".to_owned()),
+            LitVal::Identifier("x".to_owned()),
             "<",
-            LitVal::String("y".to_owned()),
+            LitVal::Identifier("y".to_owned()),
         );
 
         assert_eq!(exp.consequence.statements.len(), 1);
@@ -663,11 +651,7 @@ let y = 10;
 let foobar = 838383;
 "#;
 
-        let lexer = Lexer::new(input);
-        let mut parser = Parser::new(lexer);
-
-        let program = parser.parse_program();
-        check_parser_errors(&parser);
+        let program = parse_program(input);
 
         if program.statements.len() != 3 {
             panic!(
@@ -687,11 +671,7 @@ let foobar = 838383;
     fn test_bool_expression() {
         let input = "true;";
 
-        let lexer = Lexer::new(input);
-        let mut parser = Parser::new(lexer);
-
-        let program = parser.parse_program();
-        check_parser_errors(&parser);
+        let program = parse_program(input);
 
         assert_eq!(program.statements.len(), 1);
 
@@ -714,11 +694,7 @@ let foobar = 838383;
     fn test_identifier_expression() {
         let input = "foobar;";
 
-        let lexer = Lexer::new(input);
-        let mut parser = Parser::new(lexer);
-
-        let program = parser.parse_program();
-        check_parser_errors(&parser);
+        let program = parse_program(input);
 
         assert_eq!(program.statements.len(), 1);
 
@@ -741,11 +717,7 @@ let foobar = 838383;
     fn test_integer_literal_expression() {
         let input = "5;";
 
-        let lexer = Lexer::new(input);
-        let mut parser = Parser::new(lexer);
-
-        let program = parser.parse_program();
-        check_parser_errors(&parser);
+        let program = parse_program(input);
 
         assert_eq!(program.statements.len(), 1);
 
@@ -768,14 +740,14 @@ let foobar = 838383;
     fn test_parsing_infix_expressions() {
         // (input, left_value, operator, right_value)
         let infix_tests = [
-            ("5 + 5;", LitVal::Int(5), "+", LitVal::Int(5)),
-            ("5 - 5;", LitVal::Int(5), "-", LitVal::Int(5)),
-            ("5 * 5;", LitVal::Int(5), "*", LitVal::Int(5)),
-            ("5 / 5;", LitVal::Int(5), "/", LitVal::Int(5)),
-            ("5 > 5;", LitVal::Int(5), ">", LitVal::Int(5)),
-            ("5 < 5;", LitVal::Int(5), "<", LitVal::Int(5)),
-            ("5 == 5;", LitVal::Int(5), "==", LitVal::Int(5)),
-            ("5 != 5;", LitVal::Int(5), "!=", LitVal::Int(5)),
+            ("5 + 5;", LitVal::Integer(5), "+", LitVal::Integer(5)),
+            ("5 - 5;", LitVal::Integer(5), "-", LitVal::Integer(5)),
+            ("5 * 5;", LitVal::Integer(5), "*", LitVal::Integer(5)),
+            ("5 / 5;", LitVal::Integer(5), "/", LitVal::Integer(5)),
+            ("5 > 5;", LitVal::Integer(5), ">", LitVal::Integer(5)),
+            ("5 < 5;", LitVal::Integer(5), "<", LitVal::Integer(5)),
+            ("5 == 5;", LitVal::Integer(5), "==", LitVal::Integer(5)),
+            ("5 != 5;", LitVal::Integer(5), "!=", LitVal::Integer(5)),
             (
                 "true == true",
                 LitVal::Boolean(true),
@@ -797,11 +769,7 @@ let foobar = 838383;
         ];
 
         for (input, left_value, operator, right_value) in infix_tests {
-            let lexer = Lexer::new(input);
-            let mut parser = Parser::new(lexer);
-
-            let program = parser.parse_program();
-            check_parser_errors(&parser);
+            let program = parse_program(input);
 
             assert_eq!(program.statements.len(), 1);
 
@@ -855,11 +823,7 @@ let foobar = 838383;
         ];
 
         for (input, expected) in tests {
-            let lexer = Lexer::new(input);
-            let mut parser = Parser::new(lexer);
-
-            let program = parser.parse_program();
-            check_parser_errors(&parser);
+            let program = parse_program(input);
 
             let actual = program.string();
             assert_eq!(actual, expected);
@@ -871,18 +835,14 @@ let foobar = 838383;
     #[test]
     fn test_parsing_prefix_expressions() {
         let prefix_tests = [
-            ("!5;", "!", LitVal::Int(5i64)),
-            ("-15;", "-", LitVal::Int(15)),
+            ("!5;", "!", LitVal::Integer(5i64)),
+            ("-15;", "-", LitVal::Integer(15)),
             ("!true;", "!", LitVal::Boolean(true)),
             ("!false;", "!", LitVal::Boolean(false)),
         ];
 
         for (input, operator, value) in prefix_tests.into_iter() {
-            let lexer = Lexer::new(input);
-            let mut parser = Parser::new(lexer);
-
-            let program = parser.parse_program();
-            check_parser_errors(&parser);
+            let program = parse_program(input);
 
             assert_eq!(program.statements.len(), 1);
 
@@ -909,12 +869,7 @@ let foobar = 838383;
     fn test_function_literal_parsing() {
         let input = "fn(x, y) { x + y; }";
 
-        // TODO - avoid repeating this over and over! - moliva - 2024/03/06
-        let lexer = Lexer::new(input);
-        let mut parser = Parser::new(lexer);
-
-        let program = parser.parse_program();
-        check_parser_errors(&parser);
+        let program = parse_program(input);
 
         assert_eq!(program.statements.len(), 1);
 
@@ -936,11 +891,11 @@ let foobar = 838383;
         // TODO - omg! - moliva - 2024/03/06
         test_literal_expression(
             &Expression::Identifier(exp.parameters[0].clone()),
-            LitVal::String("x".to_owned()),
+            LitVal::Identifier("x".to_owned()),
         );
         test_literal_expression(
             &Expression::Identifier(exp.parameters[1].clone()),
-            LitVal::String("y".to_owned()),
+            LitVal::Identifier("y".to_owned()),
         );
 
         assert_eq!(exp.body.statements.len(), 1);
@@ -951,9 +906,9 @@ let foobar = 838383;
 
         test_infix_expression(
             &body_statement.expression,
-            LitVal::String("x".to_owned()),
+            LitVal::Identifier("x".to_owned()),
             "+",
-            LitVal::String("y".to_owned()),
+            LitVal::Identifier("y".to_owned()),
         );
     }
 
@@ -966,11 +921,7 @@ let foobar = 838383;
         ];
 
         for (input, expected_params) in tests {
-            let lexer = Lexer::new(input);
-            let mut parser = Parser::new(lexer);
-
-            let program = parser.parse_program();
-            check_parser_errors(&parser);
+            let program = parse_program(input);
 
             assert_eq!(program.statements.len(), 1);
 
@@ -993,7 +944,7 @@ let foobar = 838383;
             for (i, identifier) in expected_params.into_iter().enumerate() {
                 test_literal_expression(
                     &Expression::Identifier(exp.parameters[i].clone()),
-                    LitVal::String(identifier.to_owned()),
+                    LitVal::Identifier(identifier.to_owned()),
                 );
             }
         }
@@ -1003,11 +954,7 @@ let foobar = 838383;
     fn test_call_expression_parsing() {
         let input = "add(1, 2 * 3, 4 + 5);";
 
-        let lexer = Lexer::new(input);
-        let mut parser = Parser::new(lexer);
-
-        let program = parser.parse_program();
-        check_parser_errors(&parser);
+        let program = parse_program(input);
 
         assert_eq!(program.statements.len(), 1);
 
@@ -1025,21 +972,41 @@ let foobar = 838383;
         test_identifier(&exp.function, "add");
 
         assert_eq!(exp.arguments.len(), 3);
-        test_literal_expression(&exp.arguments[0], LitVal::Int(1));
-        test_infix_expression(&exp.arguments[1], LitVal::Int(2), "*", LitVal::Int(3));
-        test_infix_expression(&exp.arguments[2], LitVal::Int(4), "+", LitVal::Int(5));
+        test_literal_expression(&exp.arguments[0], LitVal::Integer(1));
+        test_infix_expression(
+            &exp.arguments[1],
+            LitVal::Integer(2),
+            "*",
+            LitVal::Integer(3),
+        );
+        test_infix_expression(
+            &exp.arguments[2],
+            LitVal::Integer(4),
+            "+",
+            LitVal::Integer(5),
+        );
     }
 
     // *****************************************************************************************************
     // *************** Utils ***************
     // *****************************************************************************************************
 
+    fn parse_program(input: &str) -> Program {
+        let lexer = Lexer::new(input);
+        let mut parser = Parser::new(lexer);
+
+        let program = parser.parse_program();
+        check_parser_errors(&parser);
+
+        program
+    }
+
     /**
      * Used for test helpers below supporting different types
      */
     enum LitVal {
-        Int(i64),
-        String(String),
+        Integer(i64),
+        Identifier(String),
         Boolean(bool),
     }
 
@@ -1047,8 +1014,8 @@ let foobar = 838383;
         use LitVal::*;
 
         match expected {
-            Int(v) => test_integer_literal(exp, v),
-            String(v) => test_identifier(exp, &v),
+            Integer(v) => test_integer_literal(exp, v),
+            Identifier(v) => test_identifier(exp, &v),
             Boolean(v) => test_boolean_literal(exp, v),
             _ => panic!("type of exp not handle. got={:?}", exp),
         }
