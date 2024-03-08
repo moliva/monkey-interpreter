@@ -1,7 +1,7 @@
 use anyhow::Result;
 use std::io::{Stdin, Stdout, Write};
 
-use crate::{lexer::Lexer, token::Token};
+use crate::{lexer::Lexer, parser::Parser, token::Token};
 
 const PROMPT: &str = ">> ";
 
@@ -12,17 +12,41 @@ pub fn start(in_: Stdin, out: &mut Stdout) -> Result<()> {
         out.flush()?;
 
         let read = in_.read_line(&mut input)?;
-        if read == 0 {
-            // TODO - do/say sth - moliva - 2023/05/28
+
+        let lexer = Lexer::new(&input);
+        let mut parser = Parser::new(lexer);
+
+        let program = parser.parse_program();
+
+        if !parser.errors.is_empty() {
+            print_parser_errors(out, &parser.errors)?;
         }
 
-        let mut lexer = Lexer::new(&input);
+        writeln!(out, "{}", program.string())?;
 
-        let mut token = lexer.next_token();
-        while token != Token::EOF {
-            writeln!(out, "{:?}", token)?;
-
-            token = lexer.next_token();
-        }
+        input.clear();
     }
+}
+
+const MONKEY_FACE: &str = r#"            __,__
+   .--.  .-"     "-.  .--.
+  / .. \/  .-. .-.  \/ .. \
+ | |  '|  /   Y   \  |'  | |
+ | \   \  \ 0 | 0 /  /   / |
+  \ '- ,\.-"""""""-./, -' /
+   ''-' /_   ^ ^   _\ '-''
+       |  \._   _./  |
+       \   \ '~' /   /
+        '._ '-=-' _.'
+           '----'
+"#;
+
+fn print_parser_errors(out: &mut Stdout, errors: &Vec<String>) -> Result<()> {
+    write!(out, "{}", MONKEY_FACE)?;
+    writeln!(out, "Woops! We ran into some monkey business here!")?;
+    writeln!(out, " parser errors:")?;
+    for msg in errors {
+        writeln!(out, "\t{}", msg)?;
+    }
+    Ok(())
 }

@@ -3,10 +3,21 @@ use std::mem::Discriminant;
 
 use crate::{ast::*, lexer::Lexer, token::Token};
 
+#[derive(PartialEq, PartialOrd)]
+enum Precedence {
+    Lowest,
+    Equals,      // ==
+    LessGreater, // > or <
+    Sum,         // +
+    Product,     // *
+    Prefix,      // -X or !X
+    Call,        // myFunction(X)
+}
+
 type PrefixParseFn = fn(p: &mut Parser) -> Option<Expression>;
 type InfixParseFn = fn(p: &mut Parser, Expression) -> Option<Expression>;
 
-struct Parser {
+pub struct Parser {
     lexer: Lexer,
 
     current_token: Token,
@@ -19,7 +30,7 @@ struct Parser {
 }
 
 impl Parser {
-    fn new(mut lexer: Lexer) -> Self {
+    pub fn new(mut lexer: Lexer) -> Self {
         let current_token = lexer.next_token();
         let peek_token = lexer.next_token();
 
@@ -108,6 +119,7 @@ impl Parser {
     fn parse_call_expression(&mut self, function: Expression) -> Option<Expression> {
         let token = self.current_token.clone();
 
+        // TODO - should we validate that this is an identifier or function literal? - moliva - 2024/03/08
         let function = Box::new(function);
         let arguments = self.parse_call_arguments();
 
@@ -252,7 +264,7 @@ impl Parser {
         self.peek_token = self.lexer.next_token();
     }
 
-    fn parse_program(&mut self) -> Program {
+    pub fn parse_program(&mut self) -> Program {
         let mut statements = vec![];
 
         while self.current_token != Token::EOF {
@@ -492,17 +504,6 @@ const fn fetch_precedence(token_type: &Token) -> Option<Precedence> {
         LParen => Call,
         _ => return None,
     })
-}
-
-#[derive(PartialEq, PartialOrd)]
-enum Precedence {
-    Lowest,
-    Equals,      // ==
-    LessGreater, // > or <
-    Sum,         // +
-    Product,     // *
-    Prefix,      // -X or !X
-    Call,        // myFunction(X)
 }
 
 #[cfg(test)]
