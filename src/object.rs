@@ -1,8 +1,9 @@
 #[derive(Debug, Clone, PartialEq)]
 pub(crate) enum Object {
+    Null,
     Integer(Integer),
     Boolean(Boolean),
-    Null,
+    ReturnValue(Box<Object>),
 }
 
 impl Object {
@@ -11,6 +12,7 @@ impl Object {
             Self::Integer(Integer(value)) => value.to_string(),
             Self::Boolean(Boolean(value)) => value.to_string(),
             Self::Null => "null".to_owned(),
+            Self::ReturnValue(v) => v.inspect(),
         }
     }
 }

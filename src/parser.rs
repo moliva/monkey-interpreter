@@ -108,7 +108,7 @@ impl Parser {
             None
         };
 
-        Some(Expression::IfExpression(IfExpression {
+        Some(Expression::If(IfExpression {
             token,
             condition,
             consequence,
@@ -123,7 +123,7 @@ impl Parser {
         let function = Box::new(function);
         let arguments = self.parse_call_arguments();
 
-        Some(Expression::CallExpression(CallExpression {
+        Some(Expression::Call(CallExpression {
             token,
             function,
             arguments,
@@ -171,7 +171,7 @@ impl Parser {
         let right = self.parse_expression(precedence);
 
         right.map(|right| {
-            Expression::InfixExpression(InfixExpression {
+            Expression::Infix(InfixExpression {
                 token,
                 operator,
                 left: Box::new(left),
@@ -215,7 +215,7 @@ impl Parser {
         right.map(|right| {
             let right = Box::new(right);
 
-            Expression::PrefixExpression(PrefixExpression {
+            Expression::Prefix(PrefixExpression {
                 token,
                 operator,
                 right,
@@ -233,7 +233,8 @@ impl Parser {
     fn parse_integer_literal(&mut self) -> Option<Expression> {
         let token = self.current_token.clone();
         let literal = token.literal();
-        let value = i64::from_str_radix(&literal, 10);
+        let value = literal.parse();
+
         if value.is_err() {
             self.errors
                 .push(format!("could not parse {} as integer", &literal));
@@ -561,7 +562,7 @@ mod tests {
         };
 
         let exp = match &exp.expression {
-            Expression::IfExpression(e) => e,
+            Expression::If(e) => e,
             _ => panic!(
                 "expression not a Expression::IfExpression. got={:?}",
                 exp.expression
@@ -601,7 +602,7 @@ mod tests {
         };
 
         let exp = match &exp.expression {
-            Expression::IfExpression(e) => e,
+            Expression::If(e) => e,
             _ => panic!(
                 "expression not a Expression::IfExpression. got={:?}",
                 exp.expression
@@ -862,7 +863,7 @@ mod tests {
             };
 
             let exp = match &exp.expression {
-                Expression::PrefixExpression(e) => e,
+                Expression::Prefix(e) => e,
                 _ => panic!(
                     "expression not a Expression::PrefixExpression. got={:?}",
                     exp
@@ -974,7 +975,7 @@ mod tests {
         };
 
         let exp = match &exp.expression {
-            Expression::CallExpression(e) => e,
+            Expression::Call(e) => e,
             _ => panic!("expression not a Expression::CallExpression. got={:?}", exp),
         };
 
@@ -1032,7 +1033,7 @@ mod tests {
 
     fn test_infix_expression(exp: &Expression, left: LitVal, operator: &str, right: LitVal) {
         let op_exp = match exp {
-            Expression::InfixExpression(e) => e,
+            Expression::Infix(e) => e,
             _ => panic!(
                 "expression not a Expression::InfixExpression. got={:?}",
                 exp

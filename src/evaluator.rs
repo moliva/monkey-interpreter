@@ -1,5 +1,5 @@
 use crate::{
-    ast::{IfExpression, Node, Statement},
+    ast::{BlockStatement, IfExpression, Node, Program, Statement},
     object::{Boolean, Integer, Object},
 };
 
@@ -7,30 +7,33 @@ pub(crate) fn eval(node: &Node) -> Object {
     use Node::*;
 
     match node {
-        Program(p) => eval_statements(&p.statements),
+        Program(p) => eval_program(p),
         Statement(s) => match s {
             crate::ast::Statement::Let(_) => todo!(),
-            crate::ast::Statement::Return(_) => todo!(),
+            crate::ast::Statement::Return(e) => {
+                let val = eval(&Node::Expression(e.return_value.clone()));
+                Object::ReturnValue(Box::new(val))
+            }
             crate::ast::Statement::Expression(e) => eval(&Expression(e.expression.clone())),
-            crate::ast::Statement::Block(e) => eval_statements(&e.statements),
+            crate::ast::Statement::Block(e) => eval_block_statement(e),
         },
         Expression(e) => match e {
             crate::ast::Expression::Identifier(_) => todo!(),
             crate::ast::Expression::IntegerLiteral(i) => Object::Integer(Integer(i.value)),
             crate::ast::Expression::Boolean(i) => Object::Boolean(Boolean(i.value)),
 
-            crate::ast::Expression::PrefixExpression(e) => {
+            crate::ast::Expression::Prefix(e) => {
                 let right = eval(&Node::Expression(*e.right.clone()));
                 eval_prefix_expression(&e.operator, &right)
             }
-            crate::ast::Expression::InfixExpression(e) => {
+            crate::ast::Expression::Infix(e) => {
                 let right = eval(&Node::Expression(*e.right.clone()));
                 let left = eval(&Node::Expression(*e.left.clone()));
                 eval_infix_expression(&e.operator, &left, &right)
             }
-            crate::ast::Expression::IfExpression(e) => eval_if_expression(e),
+            crate::ast::Expression::If(e) => eval_if_expression(e),
             crate::ast::Expression::FunctionLiteral(_) => todo!(),
-            crate::ast::Expression::CallExpression(_) => todo!(),
+            crate::ast::Expression::Call(_) => todo!(),
         },
     }
 }
@@ -38,7 +41,7 @@ pub(crate) fn eval(node: &Node) -> Object {
 fn eval_if_expression(e: &IfExpression) -> Object {
     let condition = eval(&Node::Expression(*e.condition.clone()));
 
-    if is_truthy(condition) {
+    if is_truthy(&condition) {
         eval(&Node::Statement(Statement::Block(e.consequence.clone())))
     } else if let Some(alternative) = &e.alternative {
         eval(&Node::Statement(Statement::Block(alternative.clone())))
@@ -47,10 +50,10 @@ fn eval_if_expression(e: &IfExpression) -> Object {
     }
 }
 
-fn is_truthy(obj: Object) -> bool {
+fn is_truthy(obj: &Object) -> bool {
     match obj {
         Object::Null => false,
-        Object::Boolean(Boolean(v)) => v,
+        Object::Boolean(Boolean(v)) => *v,
         _ => true,
     }
 }
@@ -100,20 +103,38 @@ fn eval_minus_prefix_operator_expression(right: &Object) -> Object {
 }
 
 fn eval_bang_operator_expression(right: &Object) -> Object {
-    let val = match right {
-        Object::Boolean(Boolean(v)) => !v,
-        Object::Null => true,
-        _ => false,
-    };
+    let val = is_truthy(right);
 
-    Object::Boolean(Boolean(val))
+    Object::Boolean(Boolean(!val))
 }
 
-fn eval_statements(statements: &[Statement]) -> Object {
+fn eval_block_statement(block: &BlockStatement) -> Object {
+    let statements = &block.statements;
+
     let mut result = None;
 
     for statement in statements {
         result = Some(eval(&Node::Statement(statement.clone())));
+
+        if let Some(rv @ Object::ReturnValue(_)) = result {
+            return rv;
+        }
+    }
+
+    result.unwrap()
+}
+
+fn eval_program(program: &Program) -> Object {
+    let statements = &program.statements;
+
+    let mut result = None;
+
+    for statement in statements {
+        result = Some(eval(&Node::Statement(statement.clone())));
+
+        if let Some(Object::ReturnValue(val)) = &result {
+            return *val.clone();
+        }
     }
 
     result.unwrap()
@@ -174,6 +195,31 @@ mod test {
             let evaluated = test_eval(input);
 
             assert_eq!(evaluated, expected);
+        }
+    }
+
+    #[test]
+    fn test_return_statements() {
+        let tests = [
+            ("return 10;", 10),
+            ("return 10; 9;", 10),
+            ("return 2 * 5; 9;", 10),
+            ("9; return 2 * 5; 9;", 10),
+            (
+                r#"if (10 > 1) {
+  if (10 > 1) {
+    return 10;
+  }
+
+  return 1;
+}"#,
+                10,
+            ),
+        ];
+
+        for (input, expected) in tests {
+            let evaluated = test_eval(input);
+            test_integer_object(&evaluated, expected);
         }
     }
 

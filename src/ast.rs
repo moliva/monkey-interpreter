@@ -3,7 +3,7 @@ use itertools::Itertools;
 use crate::token::Token;
 
 #[derive(Debug, Clone)]
-pub enum Node {
+pub(crate) enum Node {
     Program(Program),
     Statement(Statement),
     Expression(Expression),
@@ -84,11 +84,11 @@ pub(crate) enum Expression {
     Identifier(Identifier),
     IntegerLiteral(IntegerLiteral),
     Boolean(Boolean),
-    PrefixExpression(PrefixExpression),
-    InfixExpression(InfixExpression),
-    IfExpression(IfExpression),
+    Prefix(PrefixExpression),
+    Infix(InfixExpression),
+    If(IfExpression),
     FunctionLiteral(FunctionLiteral),
-    CallExpression(CallExpression),
+    Call(CallExpression),
 }
 
 impl Expression {
@@ -97,11 +97,11 @@ impl Expression {
             Expression::Identifier(Identifier { token, .. }) => token.literal(),
             Expression::IntegerLiteral(IntegerLiteral { token, .. }) => token.literal(),
             Expression::Boolean(Boolean { token, .. }) => token.literal(),
-            Expression::PrefixExpression(PrefixExpression { token, .. }) => token.literal(),
-            Expression::InfixExpression(InfixExpression { token, .. }) => token.literal(),
-            Expression::IfExpression(IfExpression { token, .. }) => token.literal(),
+            Expression::Prefix(PrefixExpression { token, .. }) => token.literal(),
+            Expression::Infix(InfixExpression { token, .. }) => token.literal(),
+            Expression::If(IfExpression { token, .. }) => token.literal(),
             Expression::FunctionLiteral(FunctionLiteral { token, .. }) => token.literal(),
-            Expression::CallExpression(CallExpression { token, .. }) => token.literal(),
+            Expression::Call(CallExpression { token, .. }) => token.literal(),
         }
     }
 
@@ -110,11 +110,11 @@ impl Expression {
             Expression::Identifier(i) => i.string(),
             Expression::IntegerLiteral(i) => i.string(),
             Expression::Boolean(i) => i.string(),
-            Expression::PrefixExpression(i) => i.string(),
-            Expression::InfixExpression(i) => i.string(),
-            Expression::IfExpression(i) => i.string(),
+            Expression::Prefix(i) => i.string(),
+            Expression::Infix(i) => i.string(),
+            Expression::If(i) => i.string(),
             Expression::FunctionLiteral(i) => i.string(),
-            Expression::CallExpression(i) => i.string(),
+            Expression::Call(i) => i.string(),
         }
     }
 }
