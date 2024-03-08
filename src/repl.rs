@@ -11,7 +11,7 @@ pub fn start(in_: Stdin, out: &mut Stdout) -> Result<()> {
         write!(out, "{}", PROMPT)?;
         out.flush()?;
 
-        let read = in_.read_line(&mut input)?;
+        let _read = in_.read_line(&mut input)?;
 
         let lexer = Lexer::new(&input);
         let mut parser = Parser::new(lexer);

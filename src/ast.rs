@@ -2,10 +2,12 @@ use itertools::Itertools;
 
 use crate::token::Token;
 
-// pub enum Node {
-//     Statement(String),
-//     Expression(String),
-// }
+#[derive(Debug, Clone)]
+pub enum Node {
+    Program(Program),
+    Statement(Statement),
+    Expression(Expression),
+}
 
 #[derive(Debug, Clone)]
 pub(crate) struct Let {
@@ -279,6 +281,7 @@ impl Identifier {
     }
 }
 
+#[derive(Debug, Clone)]
 pub struct Program {
     pub(crate) statements: Vec<Statement>,
 }

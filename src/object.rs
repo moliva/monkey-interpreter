@@ -1,11 +1,12 @@
-enum Object {
+#[derive(Debug, Clone)]
+pub(crate) enum Object {
     Integer(Integer),
     Boolean(Boolean),
     Null,
 }
 
 impl Object {
-    fn inspect(&self) -> String {
+    pub fn inspect(&self) -> String {
         match self {
             Self::Integer(Integer { value }) => value.to_string(),
             Self::Boolean(Boolean { value }) => value.to_string(),
@@ -14,10 +15,12 @@ impl Object {
     }
 }
 
-struct Integer {
-    value: i64,
+#[derive(Debug, Clone)]
+pub(crate) struct Integer {
+    pub value: i64,
 }
 
-struct Boolean {
-    value: bool,
+#[derive(Debug, Clone)]
+pub(crate) struct Boolean {
+    pub value: bool,
 }
