@@ -1,19 +1,7 @@
 use crate::{
-    ast::{Node, Statement},
+    ast::{IfExpression, Node, Statement},
     object::{Boolean, Integer, Object},
 };
-
-pub(crate) static TRUE: Object = Object::Boolean(Boolean { value: true });
-pub(crate) static FALSE: Object = Object::Boolean(Boolean { value: false });
-
-pub(crate) fn native_bool_to_boolean_object(input: bool) -> Object {
-    // TODO - avoid cloning - moliva - 2024/03/08
-    if input {
-        TRUE.clone()
-    } else {
-        FALSE.clone()
-    }
-}
 
 pub(crate) fn eval(node: &Node) -> Object {
     use Node::*;
@@ -24,14 +12,13 @@ pub(crate) fn eval(node: &Node) -> Object {
             crate::ast::Statement::Let(_) => todo!(),
             crate::ast::Statement::Return(_) => todo!(),
             crate::ast::Statement::Expression(e) => eval(&Expression(e.expression.clone())),
-            crate::ast::Statement::Block(_) => todo!(),
+            crate::ast::Statement::Block(e) => eval_statements(&e.statements),
         },
         Expression(e) => match e {
             crate::ast::Expression::Identifier(_) => todo!(),
-            crate::ast::Expression::IntegerLiteral(i) => {
-                Object::Integer(Integer { value: i.value })
-            }
-            crate::ast::Expression::Boolean(i) => native_bool_to_boolean_object(i.value),
+            crate::ast::Expression::IntegerLiteral(i) => Object::Integer(Integer(i.value)),
+            crate::ast::Expression::Boolean(i) => Object::Boolean(Boolean(i.value)),
+
             crate::ast::Expression::PrefixExpression(e) => {
                 let right = eval(&Node::Expression(*e.right.clone()));
                 eval_prefix_expression(&e.operator, &right)
@@ -41,57 +28,57 @@ pub(crate) fn eval(node: &Node) -> Object {
                 let left = eval(&Node::Expression(*e.left.clone()));
                 eval_infix_expression(&e.operator, &left, &right)
             }
-            crate::ast::Expression::IfExpression(_) => todo!(),
+            crate::ast::Expression::IfExpression(e) => eval_if_expression(e),
             crate::ast::Expression::FunctionLiteral(_) => todo!(),
             crate::ast::Expression::CallExpression(_) => todo!(),
         },
     }
 }
 
+fn eval_if_expression(e: &IfExpression) -> Object {
+    let condition = eval(&Node::Expression(*e.condition.clone()));
+
+    if is_truthy(condition) {
+        eval(&Node::Statement(Statement::Block(e.consequence.clone())))
+    } else if let Some(alternative) = &e.alternative {
+        eval(&Node::Statement(Statement::Block(alternative.clone())))
+    } else {
+        Object::Null
+    }
+}
+
+fn is_truthy(obj: Object) -> bool {
+    match obj {
+        Object::Null => false,
+        Object::Boolean(Boolean(v)) => v,
+        _ => true,
+    }
+}
+
 fn eval_infix_expression(operator: &str, left: &Object, right: &Object) -> Object {
-    if let Object::Integer(Integer { value: left }) = left {
-        if let Object::Integer(Integer { value: right }) = right {
+    if let Object::Integer(Integer(left)) = left {
+        if let Object::Integer(Integer(right)) = right {
             return eval_integer_infix_expression(operator, left, right);
         }
     }
 
     match operator {
-        "==" => Object::Boolean(Boolean {
-            value: left == right,
-        }),
-        "!=" => Object::Boolean(Boolean {
-            value: left != right,
-        }),
+        "==" => Object::Boolean(Boolean(left == right)),
+        "!=" => Object::Boolean(Boolean(left != right)),
         _ => Object::Null,
     }
 }
 
 fn eval_integer_infix_expression(operator: &str, left: &i64, right: &i64) -> Object {
     match operator {
-        "+" => Object::Integer(Integer {
-            value: left + right,
-        }),
-        "-" => Object::Integer(Integer {
-            value: left - right,
-        }),
-        "*" => Object::Integer(Integer {
-            value: left * right,
-        }),
-        "/" => Object::Integer(Integer {
-            value: left / right,
-        }),
-        "<" => Object::Boolean(Boolean {
-            value: left < right,
-        }),
-        ">" => Object::Boolean(Boolean {
-            value: left > right,
-        }),
-        "==" => Object::Boolean(Boolean {
-            value: left == right,
-        }),
-        "!=" => Object::Boolean(Boolean {
-            value: left != right,
-        }),
+        "+" => Object::Integer(Integer(left + right)),
+        "-" => Object::Integer(Integer(left - right)),
+        "*" => Object::Integer(Integer(left * right)),
+        "/" => Object::Integer(Integer(left / right)),
+        "<" => Object::Boolean(Boolean(left < right)),
+        ">" => Object::Boolean(Boolean(left > right)),
+        "==" => Object::Boolean(Boolean(left == right)),
+        "!=" => Object::Boolean(Boolean(left != right)),
         _ => Object::Null,
     }
 }
@@ -105,20 +92,21 @@ fn eval_prefix_expression(operator: &str, right: &Object) -> Object {
 }
 
 fn eval_minus_prefix_operator_expression(right: &Object) -> Object {
-    if let Object::Integer(Integer { value }) = right {
-        Object::Integer(Integer { value: -value })
+    if let Object::Integer(Integer(value)) = right {
+        Object::Integer(Integer(-value))
     } else {
         Object::Null
     }
 }
 
 fn eval_bang_operator_expression(right: &Object) -> Object {
-    match right {
-        Object::Boolean(Boolean { value: true }) => FALSE.clone(),
-        Object::Boolean(Boolean { value: false }) => TRUE.clone(),
-        Object::Null => TRUE.clone(),
-        _ => FALSE.clone(),
-    }
+    let val = match right {
+        Object::Boolean(Boolean(v)) => !v,
+        Object::Null => true,
+        _ => false,
+    };
+
+    Object::Boolean(Boolean(val))
 }
 
 fn eval_statements(statements: &[Statement]) -> Object {
@@ -161,6 +149,31 @@ mod test {
             let evaluated = test_eval(input);
 
             test_integer_object(&evaluated, expected);
+        }
+    }
+
+    #[test]
+    fn test_if_else_expressions() {
+        let tests = [
+            ("if (true) { 10 }", Object::Integer(Integer(10))),
+            ("if (false) { 10 }", Object::Null),
+            ("if (1) { 10 }", Object::Integer(Integer(10))),
+            ("if (1 < 2) { 10 }", Object::Integer(Integer(10))),
+            ("if (1 > 2) { 10 }", Object::Null),
+            (
+                "if (1 > 2) { 10 } else { 20 }",
+                Object::Integer(Integer(20)),
+            ),
+            (
+                "if (1 < 2) { 10 } else { 20 }",
+                Object::Integer(Integer(10)),
+            ),
+        ];
+
+        for (input, expected) in tests {
+            let evaluated = test_eval(input);
+
+            assert_eq!(evaluated, expected);
         }
     }
 
@@ -231,7 +244,7 @@ mod test {
             _ => panic!("object is not Boolean. got={:?}", evaluated),
         };
 
-        assert_eq!(result.value, expected);
+        assert_eq!(result.0, expected);
     }
 
     fn test_integer_object(evaluated: &Object, expected: i64) {
@@ -240,6 +253,6 @@ mod test {
             _ => panic!("object is not Integer. got={:?}", evaluated),
         };
 
-        assert_eq!(result.value, expected);
+        assert_eq!(result.0, expected);
     }
 }
