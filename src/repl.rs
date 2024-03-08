@@ -1,7 +1,7 @@
 use anyhow::Result;
 use std::io::{Stdin, Stdout, Write};
 
-use crate::{lexer::Lexer, parser::Parser, token::Token};
+use crate::{ast::Node, evaluator::eval, lexer::Lexer, parser::Parser};
 
 const PROMPT: &str = ">> ";
 
@@ -20,9 +20,11 @@ pub fn start(in_: Stdin, out: &mut Stdout) -> Result<()> {
 
         if !parser.errors.is_empty() {
             print_parser_errors(out, &parser.errors)?;
+            continue;
         }
 
-        writeln!(out, "{}", program.string())?;
+        let evaluated = eval(&Node::Program(program));
+        writeln!(out, "{}", evaluated.inspect())?;
 
         input.clear();
     }
