@@ -12,6 +12,10 @@ pub(crate) fn eval(node: &Node) -> Object {
             crate::ast::Statement::Let(_) => todo!(),
             crate::ast::Statement::Return(e) => {
                 let val = eval(&Node::Expression(e.return_value.clone()));
+                if val.is_error() {
+                    return val;
+                }
+
                 Object::ReturnValue(Box::new(val))
             }
             crate::ast::Statement::Expression(e) => eval(&Expression(e.expression.clone())),
@@ -24,11 +28,21 @@ pub(crate) fn eval(node: &Node) -> Object {
 
             crate::ast::Expression::Prefix(e) => {
                 let right = eval(&Node::Expression(*e.right.clone()));
+
+                if right.is_error() {
+                    return right;
+                }
                 eval_prefix_expression(&e.operator, &right)
             }
             crate::ast::Expression::Infix(e) => {
-                let right = eval(&Node::Expression(*e.right.clone()));
                 let left = eval(&Node::Expression(*e.left.clone()));
+                if left.is_error() {
+                    return left;
+                }
+                let right = eval(&Node::Expression(*e.right.clone()));
+                if right.is_error() {
+                    return right;
+                }
                 eval_infix_expression(&e.operator, &left, &right)
             }
             crate::ast::Expression::If(e) => eval_if_expression(e),
@@ -40,6 +54,9 @@ pub(crate) fn eval(node: &Node) -> Object {
 
 fn eval_if_expression(e: &IfExpression) -> Object {
     let condition = eval(&Node::Expression(*e.condition.clone()));
+    if condition.is_error() {
+        return condition;
+    }
 
     if is_truthy(&condition) {
         eval(&Node::Statement(Statement::Block(e.consequence.clone())))
@@ -65,10 +82,22 @@ fn eval_infix_expression(operator: &str, left: &Object, right: &Object) -> Objec
         }
     }
 
+    if std::mem::discriminant(left) != std::mem::discriminant(right) {
+        return Object::Error(format!(
+            "type mismatch: {} {operator} {}",
+            left.r#type(),
+            right.r#type()
+        ));
+    }
+
     match operator {
         "==" => Object::Boolean(Boolean(left == right)),
         "!=" => Object::Boolean(Boolean(left != right)),
-        _ => Object::Null,
+        _ => Object::Error(format!(
+            "unknown operator: {} {operator} {}",
+            left.r#type(),
+            right.r#type()
+        )),
     }
 }
 
@@ -82,7 +111,7 @@ fn eval_integer_infix_expression(operator: &str, left: &i64, right: &i64) -> Obj
         ">" => Object::Boolean(Boolean(left > right)),
         "==" => Object::Boolean(Boolean(left == right)),
         "!=" => Object::Boolean(Boolean(left != right)),
-        _ => Object::Null,
+        _ => Object::Error(format!("unkown operator: INTEGER {operator} INTEGER")),
     }
 }
 
@@ -90,7 +119,7 @@ fn eval_prefix_expression(operator: &str, right: &Object) -> Object {
     match operator {
         "!" => eval_bang_operator_expression(right),
         "-" => eval_minus_prefix_operator_expression(right),
-        _ => Object::Null,
+        _ => Object::Error(format!("unknown operator: {operator}{}", right.r#type())),
     }
 }
 
@@ -98,7 +127,7 @@ fn eval_minus_prefix_operator_expression(right: &Object) -> Object {
     if let Object::Integer(Integer(value)) = right {
         Object::Integer(Integer(-value))
     } else {
-        Object::Null
+        Object::Error(format!("unknown operator: -{}", right.r#type()))
     }
 }
 
@@ -118,6 +147,8 @@ fn eval_block_statement(block: &BlockStatement) -> Object {
 
         if let Some(rv @ Object::ReturnValue(_)) = result {
             return rv;
+        } else if let Some(e @ Object::Error(_)) = result {
+            return e;
         }
     }
 
@@ -134,6 +165,8 @@ fn eval_program(program: &Program) -> Object {
 
         if let Some(Object::ReturnValue(val)) = &result {
             return *val.clone();
+        } else if let Some(r @ Object::Error(_)) = &result {
+            return r.clone();
         }
     }
 
@@ -170,6 +203,41 @@ mod test {
             let evaluated = test_eval(input);
 
             test_integer_object(&evaluated, expected);
+        }
+    }
+
+    #[test]
+    fn test_error_handling() {
+        let tests = [
+            ("5 + true;", "type mismatch: INTEGER + BOOLEAN"),
+            ("5 + true; 5;", "type mismatch: INTEGER + BOOLEAN"),
+            ("-true", "unknown operator: -BOOLEAN"),
+            ("true + false;", "unknown operator: BOOLEAN + BOOLEAN"),
+            ("5; true + false; 5", "unknown operator: BOOLEAN + BOOLEAN"),
+            (
+                "if (10 > 1) { true + false; }",
+                "unknown operator: BOOLEAN + BOOLEAN",
+            ),
+            (
+                r#"if (10 > 1) {
+                    if (10 > 1) {
+                        return true + false;
+                    }
+
+                    return 1;
+                  } "#,
+                "unknown operator: BOOLEAN + BOOLEAN",
+            ),
+        ];
+
+        for (input, expected_error) in tests {
+            let evaluated = test_eval(input);
+
+            if let Object::Error(message) = evaluated {
+                assert_eq!(message, expected_error);
+            } else {
+                panic!("expected error from {input}, got {evaluated:?}");
+            }
         }
     }
 
