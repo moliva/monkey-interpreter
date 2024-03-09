@@ -1,3 +1,5 @@
+use std::collections::HashMap;
+
 #[derive(Debug, Clone, PartialEq)]
 pub(crate) enum Object {
     Null,
@@ -31,6 +33,21 @@ impl Object {
             Self::ReturnValue(v) => v.inspect(),
             Self::Error(message) => format!("ERROR: {message}"),
         }
+    }
+}
+
+#[derive(Debug, Clone, Default)]
+pub(crate) struct Environment {
+    store: HashMap<String, Object>,
+}
+
+impl Environment {
+    pub fn get(&self, name: &str) -> Option<&Object> {
+        self.store.get(name)
+    }
+
+    pub fn set(&mut self, name: &str, val: Object) {
+        self.store.insert(name.to_owned(), val);
     }
 }
 

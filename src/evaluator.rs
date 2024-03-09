@@ -1,33 +1,42 @@
 use crate::{
     ast::{BlockStatement, IfExpression, Node, Program, Statement},
-    object::{Boolean, Integer, Object},
+    object::{Boolean, Environment, Integer, Object},
 };
 
-pub(crate) fn eval(node: &Node) -> Object {
+pub(crate) fn eval(node: &Node, env: &mut Environment) -> Object {
     use Node::*;
 
     match node {
-        Program(p) => eval_program(p),
+        Program(p) => eval_program(p, env),
         Statement(s) => match s {
-            crate::ast::Statement::Let(_) => todo!(),
+            crate::ast::Statement::Let(e) => {
+                let val = eval(&Node::Expression(e.value.clone()), env);
+                if val.is_error() {
+                    return val;
+                }
+
+                env.set(&e.name.value, val.clone());
+
+                val
+            }
             crate::ast::Statement::Return(e) => {
-                let val = eval(&Node::Expression(e.return_value.clone()));
+                let val = eval(&Node::Expression(e.return_value.clone()), env);
                 if val.is_error() {
                     return val;
                 }
 
                 Object::ReturnValue(Box::new(val))
             }
-            crate::ast::Statement::Expression(e) => eval(&Expression(e.expression.clone())),
-            crate::ast::Statement::Block(e) => eval_block_statement(e),
+            crate::ast::Statement::Expression(e) => eval(&Expression(e.expression.clone()), env),
+            crate::ast::Statement::Block(e) => eval_block_statement(e, env),
         },
         Expression(e) => match e {
-            crate::ast::Expression::Identifier(_) => todo!(),
+            crate::ast::Expression::Identifier(e) => eval_identifier(e, env),
             crate::ast::Expression::IntegerLiteral(i) => Object::Integer(Integer(i.value)),
             crate::ast::Expression::Boolean(i) => Object::Boolean(Boolean(i.value)),
 
             crate::ast::Expression::Prefix(e) => {
-                let right = eval(&Node::Expression(*e.right.clone()));
+                let right = eval(&Node::Expression(*e.right.clone()), env);
 
                 if right.is_error() {
                     return right;
@@ -35,33 +44,43 @@ pub(crate) fn eval(node: &Node) -> Object {
                 eval_prefix_expression(&e.operator, &right)
             }
             crate::ast::Expression::Infix(e) => {
-                let left = eval(&Node::Expression(*e.left.clone()));
+                let left = eval(&Node::Expression(*e.left.clone()), env);
                 if left.is_error() {
                     return left;
                 }
-                let right = eval(&Node::Expression(*e.right.clone()));
+                let right = eval(&Node::Expression(*e.right.clone()), env);
                 if right.is_error() {
                     return right;
                 }
                 eval_infix_expression(&e.operator, &left, &right)
             }
-            crate::ast::Expression::If(e) => eval_if_expression(e),
+            crate::ast::Expression::If(e) => eval_if_expression(e, env),
             crate::ast::Expression::FunctionLiteral(_) => todo!(),
             crate::ast::Expression::Call(_) => todo!(),
         },
     }
 }
 
-fn eval_if_expression(e: &IfExpression) -> Object {
-    let condition = eval(&Node::Expression(*e.condition.clone()));
+fn eval_identifier(identifier: &crate::ast::Identifier, env: &mut Environment) -> Object {
+    let identifier = &identifier.value;
+    let val = env.get(identifier);
+    val.map(Clone::clone)
+        .unwrap_or_else(|| Object::Error(format!("identifier not found: {identifier}")))
+}
+
+fn eval_if_expression(e: &IfExpression, env: &mut Environment) -> Object {
+    let condition = eval(&Node::Expression(*e.condition.clone()), env);
     if condition.is_error() {
         return condition;
     }
 
     if is_truthy(&condition) {
-        eval(&Node::Statement(Statement::Block(e.consequence.clone())))
+        eval(
+            &Node::Statement(Statement::Block(e.consequence.clone())),
+            env,
+        )
     } else if let Some(alternative) = &e.alternative {
-        eval(&Node::Statement(Statement::Block(alternative.clone())))
+        eval(&Node::Statement(Statement::Block(alternative.clone())), env)
     } else {
         Object::Null
     }
@@ -137,13 +156,13 @@ fn eval_bang_operator_expression(right: &Object) -> Object {
     Object::Boolean(Boolean(!val))
 }
 
-fn eval_block_statement(block: &BlockStatement) -> Object {
+fn eval_block_statement(block: &BlockStatement, env: &mut Environment) -> Object {
     let statements = &block.statements;
 
     let mut result = None;
 
     for statement in statements {
-        result = Some(eval(&Node::Statement(statement.clone())));
+        result = Some(eval(&Node::Statement(statement.clone()), env));
 
         if let Some(rv @ Object::ReturnValue(_)) = result {
             return rv;
@@ -155,13 +174,13 @@ fn eval_block_statement(block: &BlockStatement) -> Object {
     result.unwrap()
 }
 
-fn eval_program(program: &Program) -> Object {
+fn eval_program(program: &Program, env: &mut Environment) -> Object {
     let statements = &program.statements;
 
     let mut result = None;
 
     for statement in statements {
-        result = Some(eval(&Node::Statement(statement.clone())));
+        result = Some(eval(&Node::Statement(statement.clone()), env));
 
         if let Some(Object::ReturnValue(val)) = &result {
             return *val.clone();
@@ -228,6 +247,7 @@ mod test {
                   } "#,
                 "unknown operator: BOOLEAN + BOOLEAN",
             ),
+            ("foobar", "identifier not found: foobar"),
         ];
 
         for (input, expected_error) in tests {
@@ -238,6 +258,20 @@ mod test {
             } else {
                 panic!("expected error from {input}, got {evaluated:?}");
             }
+        }
+    }
+
+    #[test]
+    fn test_let_statements() {
+        let tests = [
+            ("let a = 5; a;", 5),
+            ("let a = 5 * 5; a;", 25),
+            ("let a = 5; let b = a; b;", 5),
+            ("let a = 5; let b = a; let c = a + b + 5; c;", 15),
+        ];
+
+        for (input, expected) in tests {
+            test_integer_object(&test_eval(input), expected);
         }
     }
 
@@ -349,7 +383,9 @@ mod test {
 
         let program = parser.parse_program();
 
-        eval(&Node::Program(program))
+        let mut env = Environment::default();
+
+        eval(&Node::Program(program), &mut env)
     }
 
     fn test_boolean_object(evaluated: &Object, expected: bool) {

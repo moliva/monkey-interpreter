@@ -1,12 +1,14 @@
 use anyhow::Result;
 use std::io::{Stdin, Stdout, Write};
 
-use crate::{ast::Node, evaluator::eval, lexer::Lexer, parser::Parser};
+use crate::{ast::Node, evaluator::eval, lexer::Lexer, object::Environment, parser::Parser};
 
 const PROMPT: &str = ">> ";
 
 pub fn start(in_: Stdin, out: &mut Stdout) -> Result<()> {
     let mut input = String::new();
+    let mut env = Environment::default();
+
     loop {
         write!(out, "{}", PROMPT)?;
         out.flush()?;
@@ -23,7 +25,7 @@ pub fn start(in_: Stdin, out: &mut Stdout) -> Result<()> {
             continue;
         }
 
-        let evaluated = eval(&Node::Program(program));
+        let evaluated = eval(&Node::Program(program), &mut env);
         writeln!(out, "{}", evaluated.inspect())?;
 
         input.clear();
