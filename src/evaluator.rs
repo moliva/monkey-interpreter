@@ -1,7 +1,7 @@
 use std::rc::Rc;
 
 use crate::{
-    ast::{BlockStatement, IfExpression, Node, Program, Statement},
+    ast::{BlockStatement, Identifier, IfExpression, Node, Program, Statement},
     object::{Boolean, Environment, Function, Integer, Object},
 };
 
@@ -71,9 +71,76 @@ pub(crate) fn eval(node: &Node, env: &mut Rc<Environment>) -> Object {
                     env,
                 })
             }
-            crate::ast::Expression::Call(_) => todo!(),
+            crate::ast::Expression::Call(e) => {
+                let function = eval(&Node::Expression(*e.function.clone()), env);
+                if function.is_error() {
+                    return function;
+                }
+
+                let args = eval_expressions(&e.arguments, env);
+                if args.len() == 1 && args[0].is_error() {
+                    return args[0].clone();
+                }
+
+                apply_function(function, args)
+            }
         },
     }
+}
+
+fn apply_function(function: Object, args: Vec<Object>) -> Object {
+    let Function {
+        parameters,
+        body,
+        env,
+    } = match function {
+        Object::Function(f) => f,
+        _ => panic!("not a function: {}", function.r#type()),
+    };
+
+    let mut extended_env = Rc::new(extend_function_env(env, parameters, args));
+    let evaluated = eval(&Node::Statement(Statement::Block(body)), &mut extended_env);
+
+    unwrap_return_value(evaluated)
+}
+
+fn unwrap_return_value(evaluated: Object) -> Object {
+    match evaluated {
+        Object::ReturnValue(v) => *v,
+        _ => evaluated,
+    }
+}
+
+fn extend_function_env(
+    env: Rc<Environment>,
+    parameters: Vec<Identifier>,
+    args: Vec<Object>,
+) -> Environment {
+    let mut env = Environment::enclosed(env);
+
+    for (i, param) in parameters.into_iter().enumerate() {
+        env.set(&param.value, args[i].clone());
+    }
+
+    env
+}
+
+fn eval_expressions(
+    expressions: &Vec<crate::ast::Expression>,
+    env: &mut Rc<Environment>,
+) -> Vec<Object> {
+    let mut result = Vec::default();
+
+    for expression in expressions {
+        let evaluated = eval(&Node::Expression(expression.clone()), env);
+        if evaluated.is_error() {
+            return vec![evaluated];
+        }
+
+        result.push(evaluated);
+    }
+
+    result
 }
 
 fn eval_identifier(identifier: &crate::ast::Identifier, env: &mut Rc<Environment>) -> Object {
@@ -402,6 +469,22 @@ mod test {
         assert_eq!(f.parameters.len(), 1);
         assert_eq!(f.parameters[0].string(), "x");
         assert_eq!(f.body.string(), "(x + 2)");
+    }
+
+    #[test]
+    fn test_function_application() {
+        let tests = [
+            ("let identity = fn(x) { x; }; identity(5);", 5),
+            ("let identity = fn(x) { return x; }; identity(5);", 5),
+            ("let double = fn(x) { x * 2; }; double(5);", 10),
+            ("let add = fn(x, y) { x + y; }; add(5, 5);", 10),
+            ("let add = fn(x, y) { x + y; }; add(5 + 5, add(5, 5));", 20),
+            ("fn(x) { x; }(5)", 5),
+        ];
+
+        for (input, expected) in tests {
+            test_integer_object(&test_eval(input), expected);
+        }
     }
 
     // *****************************************************************************************************

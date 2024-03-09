@@ -53,11 +53,21 @@ impl Object {
 #[derive(Debug, Clone, Default)]
 pub(crate) struct Environment {
     store: HashMap<String, Object>,
+    outer: Option<Box<Rc<Environment>>>,
 }
 
 impl Environment {
+    pub fn enclosed(outer: Rc<Self>) -> Self {
+        Self {
+            outer: Some(Box::new(outer)),
+            ..Default::default()
+        }
+    }
+
     pub fn get(&self, name: &str) -> Option<&Object> {
-        self.store.get(name)
+        let obj = self.store.get(name);
+
+        obj.or_else(|| self.outer.as_ref()?.get(name))
     }
 
     pub fn set(&mut self, name: &str, val: Object) {
