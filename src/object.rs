@@ -1,4 +1,8 @@
-use std::collections::HashMap;
+use std::{collections::HashMap, rc::Rc};
+
+use itertools::Itertools;
+
+use crate::ast::{BlockStatement, Identifier};
 
 #[derive(Debug, Clone, PartialEq)]
 pub(crate) enum Object {
@@ -7,6 +11,7 @@ pub(crate) enum Object {
     Boolean(Boolean),
     ReturnValue(Box<Object>),
     Error(String),
+    Function(Function),
 }
 
 impl Object {
@@ -21,6 +26,7 @@ impl Object {
             Self::Boolean(_) => "BOOLEAN",
             Self::ReturnValue(_) => "RETURN",
             Self::Error(_) => "ERROR",
+            Self::Function(_) => "FUNCTION",
         }
         .to_owned()
     }
@@ -32,6 +38,14 @@ impl Object {
             Self::Null => "null".to_owned(),
             Self::ReturnValue(v) => v.inspect(),
             Self::Error(message) => format!("ERROR: {message}"),
+            Self::Function(Function {
+                parameters, body, ..
+            }) => {
+                let params = parameters.iter().map(Identifier::string).join(", ");
+                let body = body.string();
+
+                format!("fn({params}) {}\n{body}{}", "{", "}")
+            }
         }
     }
 }
@@ -56,3 +70,18 @@ pub(crate) struct Integer(pub i64);
 
 #[derive(Debug, Clone, PartialEq)]
 pub(crate) struct Boolean(pub bool);
+
+#[derive(Debug, Clone)]
+pub(crate) struct Function {
+    pub parameters: Vec<Identifier>,
+    pub body: BlockStatement,
+    pub env: Rc<Environment>,
+}
+
+impl PartialEq for Function {
+    fn eq(&self, other: &Self) -> bool {
+        std::ptr::eq(&self.parameters, &other.parameters)
+            && std::ptr::eq(&self.body, &other.body)
+            && std::ptr::eq(&self.env, &other.env)
+    }
+}

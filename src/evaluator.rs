@@ -1,9 +1,11 @@
+use std::rc::Rc;
+
 use crate::{
     ast::{BlockStatement, IfExpression, Node, Program, Statement},
-    object::{Boolean, Environment, Integer, Object},
+    object::{Boolean, Environment, Function, Integer, Object},
 };
 
-pub(crate) fn eval(node: &Node, env: &mut Environment) -> Object {
+pub(crate) fn eval(node: &Node, env: &mut Rc<Environment>) -> Object {
     use Node::*;
 
     match node {
@@ -15,7 +17,10 @@ pub(crate) fn eval(node: &Node, env: &mut Environment) -> Object {
                     return val;
                 }
 
-                env.set(&e.name.value, val.clone());
+                // TODO - need to change - moliva - 2024/03/09
+                Rc::get_mut(env)
+                    .expect("env mut")
+                    .set(&e.name.value, val.clone());
 
                 val
             }
@@ -55,20 +60,30 @@ pub(crate) fn eval(node: &Node, env: &mut Environment) -> Object {
                 eval_infix_expression(&e.operator, &left, &right)
             }
             crate::ast::Expression::If(e) => eval_if_expression(e, env),
-            crate::ast::Expression::FunctionLiteral(_) => todo!(),
+            crate::ast::Expression::FunctionLiteral(f) => {
+                let parameters = f.parameters.clone();
+                let body = f.body.clone();
+                let env = Rc::clone(env);
+
+                Object::Function(Function {
+                    parameters,
+                    body,
+                    env,
+                })
+            }
             crate::ast::Expression::Call(_) => todo!(),
         },
     }
 }
 
-fn eval_identifier(identifier: &crate::ast::Identifier, env: &mut Environment) -> Object {
+fn eval_identifier(identifier: &crate::ast::Identifier, env: &mut Rc<Environment>) -> Object {
     let identifier = &identifier.value;
     let val = env.get(identifier);
     val.map(Clone::clone)
         .unwrap_or_else(|| Object::Error(format!("identifier not found: {identifier}")))
 }
 
-fn eval_if_expression(e: &IfExpression, env: &mut Environment) -> Object {
+fn eval_if_expression(e: &IfExpression, env: &mut Rc<Environment>) -> Object {
     let condition = eval(&Node::Expression(*e.condition.clone()), env);
     if condition.is_error() {
         return condition;
@@ -156,7 +171,7 @@ fn eval_bang_operator_expression(right: &Object) -> Object {
     Object::Boolean(Boolean(!val))
 }
 
-fn eval_block_statement(block: &BlockStatement, env: &mut Environment) -> Object {
+fn eval_block_statement(block: &BlockStatement, env: &mut Rc<Environment>) -> Object {
     let statements = &block.statements;
 
     let mut result = None;
@@ -174,7 +189,7 @@ fn eval_block_statement(block: &BlockStatement, env: &mut Environment) -> Object
     result.unwrap()
 }
 
-fn eval_program(program: &Program, env: &mut Environment) -> Object {
+fn eval_program(program: &Program, env: &mut Rc<Environment>) -> Object {
     let statements = &program.statements;
 
     let mut result = None;
@@ -373,6 +388,22 @@ mod test {
         }
     }
 
+    #[test]
+    fn test_function_object() {
+        let input = "fn(x) { x + 2; };";
+
+        let evaluated = test_eval(input);
+
+        let f = match evaluated {
+            Object::Function(f) => f,
+            _ => panic!("object is not Function. got={evaluated:?}"),
+        };
+
+        assert_eq!(f.parameters.len(), 1);
+        assert_eq!(f.parameters[0].string(), "x");
+        assert_eq!(f.body.string(), "(x + 2)");
+    }
+
     // *****************************************************************************************************
     // *************** Helpers ***************
     // *****************************************************************************************************
@@ -383,7 +414,7 @@ mod test {
 
         let program = parser.parse_program();
 
-        let mut env = Environment::default();
+        let mut env = Rc::new(Environment::default());
 
         eval(&Node::Program(program), &mut env)
     }

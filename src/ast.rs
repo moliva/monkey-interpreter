@@ -290,7 +290,7 @@ impl Program {
     pub fn token_literal(&self) -> String {
         self.statements
             .iter()
-            .map(|s| s.token_literal().clone())
+            .map(|s| s.token_literal())
             .join("\n")
     }
 
