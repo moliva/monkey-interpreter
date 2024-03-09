@@ -1,11 +1,11 @@
-use std::rc::Rc;
+use std::cell::RefCell;
 
 use crate::{
     ast::{BlockStatement, Identifier, IfExpression, Node, Program, Statement},
     object::{Boolean, Environment, Function, Integer, Object},
 };
 
-pub(crate) fn eval(node: &Node, env: &mut Rc<Environment>) -> Object {
+pub(crate) fn eval(node: &Node, env: &mut RefCell<Environment>) -> Object {
     use Node::*;
 
     match node {
@@ -17,10 +17,7 @@ pub(crate) fn eval(node: &Node, env: &mut Rc<Environment>) -> Object {
                     return val;
                 }
 
-                // TODO - need to change - moliva - 2024/03/09
-                Rc::get_mut(env)
-                    .expect("env mut")
-                    .set(&e.name.value, val.clone());
+                env.borrow_mut().set(&e.name.value, val.clone());
 
                 val
             }
@@ -63,7 +60,7 @@ pub(crate) fn eval(node: &Node, env: &mut Rc<Environment>) -> Object {
             crate::ast::Expression::FunctionLiteral(f) => {
                 let parameters = f.parameters.clone();
                 let body = f.body.clone();
-                let env = Rc::clone(env);
+                let env = RefCell::clone(env);
 
                 Object::Function(Function {
                     parameters,
@@ -98,7 +95,7 @@ fn apply_function(function: Object, args: Vec<Object>) -> Object {
         _ => panic!("not a function: {}", function.r#type()),
     };
 
-    let mut extended_env = Rc::new(extend_function_env(env, parameters, args));
+    let mut extended_env = RefCell::new(extend_function_env(env, parameters, args));
     let evaluated = eval(&Node::Statement(Statement::Block(body)), &mut extended_env);
 
     unwrap_return_value(evaluated)
@@ -112,7 +109,7 @@ fn unwrap_return_value(evaluated: Object) -> Object {
 }
 
 fn extend_function_env(
-    env: Rc<Environment>,
+    env: RefCell<Environment>,
     parameters: Vec<Identifier>,
     args: Vec<Object>,
 ) -> Environment {
@@ -127,7 +124,7 @@ fn extend_function_env(
 
 fn eval_expressions(
     expressions: &Vec<crate::ast::Expression>,
-    env: &mut Rc<Environment>,
+    env: &mut RefCell<Environment>,
 ) -> Vec<Object> {
     let mut result = Vec::default();
 
@@ -143,14 +140,14 @@ fn eval_expressions(
     result
 }
 
-fn eval_identifier(identifier: &crate::ast::Identifier, env: &mut Rc<Environment>) -> Object {
+fn eval_identifier(identifier: &crate::ast::Identifier, env: &mut RefCell<Environment>) -> Object {
     let identifier = &identifier.value;
+    let env = env.borrow();
     let val = env.get(identifier);
-    val.map(Clone::clone)
-        .unwrap_or_else(|| Object::Error(format!("identifier not found: {identifier}")))
+    val.unwrap_or_else(|| Object::Error(format!("identifier not found: {identifier}")))
 }
 
-fn eval_if_expression(e: &IfExpression, env: &mut Rc<Environment>) -> Object {
+fn eval_if_expression(e: &IfExpression, env: &mut RefCell<Environment>) -> Object {
     let condition = eval(&Node::Expression(*e.condition.clone()), env);
     if condition.is_error() {
         return condition;
@@ -238,7 +235,7 @@ fn eval_bang_operator_expression(right: &Object) -> Object {
     Object::Boolean(Boolean(!val))
 }
 
-fn eval_block_statement(block: &BlockStatement, env: &mut Rc<Environment>) -> Object {
+fn eval_block_statement(block: &BlockStatement, env: &mut RefCell<Environment>) -> Object {
     let statements = &block.statements;
 
     let mut result = None;
@@ -256,7 +253,7 @@ fn eval_block_statement(block: &BlockStatement, env: &mut Rc<Environment>) -> Ob
     result.unwrap()
 }
 
-fn eval_program(program: &Program, env: &mut Rc<Environment>) -> Object {
+fn eval_program(program: &Program, env: &mut RefCell<Environment>) -> Object {
     let statements = &program.statements;
 
     let mut result = None;
@@ -276,6 +273,8 @@ fn eval_program(program: &Program, env: &mut Rc<Environment>) -> Object {
 
 #[cfg(test)]
 mod test {
+    use std::cell::RefCell;
+
     use crate::{lexer::Lexer, parser::Parser};
 
     use super::*;
@@ -497,7 +496,7 @@ mod test {
 
         let program = parser.parse_program();
 
-        let mut env = Rc::new(Environment::default());
+        let mut env = RefCell::new(Environment::default());
 
         eval(&Node::Program(program), &mut env)
     }

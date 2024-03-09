@@ -1,4 +1,4 @@
-use std::{collections::HashMap, rc::Rc};
+use std::{cell::RefCell, collections::HashMap};
 
 use itertools::Itertools;
 
@@ -53,21 +53,22 @@ impl Object {
 #[derive(Debug, Clone, Default)]
 pub(crate) struct Environment {
     store: HashMap<String, Object>,
-    outer: Option<Box<Rc<Environment>>>,
+    outer: Option<Box<RefCell<Environment>>>,
 }
 
 impl Environment {
-    pub fn enclosed(outer: Rc<Self>) -> Self {
+    pub fn enclosed(outer: RefCell<Self>) -> Self {
         Self {
             outer: Some(Box::new(outer)),
             ..Default::default()
         }
     }
 
-    pub fn get(&self, name: &str) -> Option<&Object> {
+    pub fn get(&self, name: &str) -> Option<Object> {
         let obj = self.store.get(name);
 
-        obj.or_else(|| self.outer.as_ref()?.get(name))
+        obj.map(Clone::clone)
+            .or_else(|| self.outer.as_ref()?.borrow().get(name).clone())
     }
 
     pub fn set(&mut self, name: &str, val: Object) {
@@ -85,7 +86,7 @@ pub(crate) struct Boolean(pub bool);
 pub(crate) struct Function {
     pub parameters: Vec<Identifier>,
     pub body: BlockStatement,
-    pub env: Rc<Environment>,
+    pub env: RefCell<Environment>,
 }
 
 impl PartialEq for Function {
