@@ -8,6 +8,7 @@ pub enum Token {
     // identifiers + literals
     Ident(String),
     Int(String),
+    String(String),
 
     // operators
     Assign,
@@ -70,6 +71,7 @@ impl Token {
             Token::Return => "return",
             Token::True => "true",
             Token::False => "false",
+            Token::String(_) => todo!(),
             Token::Illegal(l) => return std::str::from_utf8(&[*l]).unwrap().to_owned(),
         }
         .to_owned()

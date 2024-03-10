@@ -46,6 +46,7 @@ impl Lexer {
         self.skip_whitespace();
 
         use Token::*;
+
         let token = match self.current {
             b'=' => {
                 if self.peek_char() == b'=' {
@@ -75,6 +76,10 @@ impl Lexer {
             b',' => Comma,
             b'{' => LBrace,
             b'}' => RBrace,
+            b'"' => {
+                let s = self.read_string();
+                String(s)
+            }
             b'\0' => EOF,
             c => {
                 if is_letter(c) {
@@ -120,6 +125,20 @@ impl Lexer {
 
         while is_digit(self.current) {
             self.read_char();
+        }
+
+        let slice = &self.input[position..self.position];
+        std::str::from_utf8(slice).unwrap().to_owned()
+    }
+
+    fn read_string(&mut self) -> String {
+        let position = self.position + 1;
+
+        loop {
+            self.read_char();
+            if self.current == b'"' || self.current == b'\0' {
+                break;
+            }
         }
 
         let slice = &self.input[position..self.position];
@@ -179,83 +198,87 @@ if (5 < 10) {
 
 10 == 10;
 10 != 9;
+"foobar"
+"foo bar"
 "#;
 
         let tokens = vec![
-            Let,                        //{token.LET, "let"},
-            Ident("five".to_owned()),   //{token.IDENT, "five"},
-            Assign,                     //{token.ASSIGN, "="},
-            Int("5".to_owned()),        //{token.INT, "5"},
-            Semicolon,                  //{token.SEMICOLON, ";"},
-            Let,                        //{token.LET, "let"},
-            Ident("ten".to_owned()),    //{token.IDENT, "ten"},
-            Assign,                     //{token.ASSIGN, "="},
-            Int("10".to_owned()),       //{token.INT, "10"},
-            Semicolon,                  //{token.SEMICOLON, ";"},
-            Let,                        //{token.LET, "let"},
-            Ident("add".to_owned()),    //{token.IDENT, "add"},
-            Assign,                     //{token.ASSIGN, "="},
-            Function,                   //{token.FUNCTION, "fn"},
-            LParen,                     //{token.LPAREN, "("},
-            Ident("x".to_owned()),      //{token.IDENT, "x"},
-            Comma,                      //{token.COMMA, ","},
-            Ident("y".to_owned()),      //{token.IDENT, "y"},
-            RParen,                     //{token.RPAREN, ")"},
-            LBrace,                     //{token.LBRACE, "{"},
-            Ident("x".to_owned()),      //{token.IDENT, "x"},
-            Plus,                       //{token.PLUS, "+"},
-            Ident("y".to_owned()),      //{token.IDENT, "y"},
-            Semicolon,                  //{token.SEMICOLON, ";"},
-            RBrace,                     //{token.RBRACE, "}"},
-            Semicolon,                  //{token.SEMICOLON, ";"},
-            Let,                        //{token.LET, "let"},
-            Ident("result".to_owned()), //{token.IDENT, "result"},
-            Assign,                     //{token.ASSIGN, "="},
-            Ident("add".to_owned()),    //{token.IDENT, "add"},
-            LParen,                     //{token.LPAREN, "("},
-            Ident("five".to_owned()),   //{token.IDENT, "five"},
-            Comma,                      //{token.COMMA, ","},
-            Ident("ten".to_owned()),    //{token.IDENT, "ten"},
-            RParen,                     //{token.RPAREN, ")"},
-            Semicolon,                  //{token.SEMICOLON, ";"},
-            Bang,                       //
-            Minus,                      //
-            Slash,                      //
-            Asterisk,                   //
-            Int("5".to_owned()),        //
-            Semicolon,                  //
-            Int("5".to_owned()),        //
-            Lt,                         //
-            Int("10".to_owned()),       //
-            Gt,                         //
-            Int("5".to_owned()),        //
-            Semicolon,                  //
-            If,                         //
-            LParen,                     //
-            Int("5".to_owned()),        //
-            Lt,                         //
-            Int("10".to_owned()),       //
-            RParen,                     //
-            LBrace,                     //
-            Return,                     //
-            True,                       //
-            Semicolon,                  //
-            RBrace,                     //
-            Else,                       //
-            LBrace,                     //
-            Return,                     //
-            False,                      //
-            Semicolon,                  //
-            RBrace,                     //
-            Int("10".to_owned()),       //
-            Eq,                         //
-            Int("10".to_owned()),       //
-            Semicolon,                  //
-            Int("10".to_owned()),       //
-            NotEq,                      //
-            Int("9".to_owned()),        //
-            Semicolon,                  //
-            EOF,                        //{token.EOF, ""},
+            Let,
+            Ident("five".to_owned()),
+            Assign,
+            Int("5".to_owned()),
+            Semicolon,
+            Let,
+            Ident("ten".to_owned()),
+            Assign,
+            Int("10".to_owned()),
+            Semicolon,
+            Let,
+            Ident("add".to_owned()),
+            Assign,
+            Function,
+            LParen,
+            Ident("x".to_owned()),
+            Comma,
+            Ident("y".to_owned()),
+            RParen,
+            LBrace,
+            Ident("x".to_owned()),
+            Plus,
+            Ident("y".to_owned()),
+            Semicolon,
+            RBrace,
+            Semicolon,
+            Let,
+            Ident("result".to_owned()),
+            Assign,
+            Ident("add".to_owned()),
+            LParen,
+            Ident("five".to_owned()),
+            Comma,
+            Ident("ten".to_owned()),
+            RParen,
+            Semicolon,
+            Bang,
+            Minus,
+            Slash,
+            Asterisk,
+            Int("5".to_owned()),
+            Semicolon,
+            Int("5".to_owned()),
+            Lt,
+            Int("10".to_owned()),
+            Gt,
+            Int("5".to_owned()),
+            Semicolon,
+            If,
+            LParen,
+            Int("5".to_owned()),
+            Lt,
+            Int("10".to_owned()),
+            RParen,
+            LBrace,
+            Return,
+            True,
+            Semicolon,
+            RBrace,
+            Else,
+            LBrace,
+            Return,
+            False,
+            Semicolon,
+            RBrace,
+            Int("10".to_owned()),
+            Eq,
+            Int("10".to_owned()),
+            Semicolon,
+            Int("10".to_owned()),
+            NotEq,
+            Int("9".to_owned()),
+            Semicolon,
+            String("foobar".to_owned()),
+            String("foo bar".to_owned()),
+            EOF,
         ];
 
         let mut lexer = Lexer::new(input);
