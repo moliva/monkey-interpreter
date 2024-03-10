@@ -357,6 +357,20 @@ mod test {
     }
 
     #[test]
+    fn test_closures() {
+        let input = r#"
+let newAdder = fn(x) {
+  fn(y) { x + y };
+};
+
+let addTwo = newAdder(2);
+addTwo(2);
+"#;
+
+        test_integer_object(&test_eval(input), 4);
+    }
+
+    #[test]
     fn test_if_else_expressions() {
         let tests = [
             ("if (true) { 10 }", Object::Integer(Integer(10))),

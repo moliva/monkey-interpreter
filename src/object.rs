@@ -44,7 +44,7 @@ impl Object {
                 let params = parameters.iter().map(Identifier::string).join(", ");
                 let body = body.string();
 
-                format!("fn({params}) {}\n{body}{}", "{", "}")
+                format!("fn({params}) {}\n{body}\n{}", "{", "}")
             }
         }
     }
