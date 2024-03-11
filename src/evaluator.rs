@@ -181,6 +181,12 @@ fn eval_infix_expression(operator: &str, left: &Object, right: &Object) -> Objec
         }
     }
 
+    if let Object::String(left) = left {
+        if let Object::String(right) = right {
+            return eval_string_infix_expression(operator, left, right);
+        }
+    }
+
     if std::mem::discriminant(left) != std::mem::discriminant(right) {
         return Object::Error(format!(
             "type mismatch: {} {operator} {}",
@@ -198,6 +204,14 @@ fn eval_infix_expression(operator: &str, left: &Object, right: &Object) -> Objec
             right.r#type()
         )),
     }
+}
+
+fn eval_string_infix_expression(operator: &str, left: &str, right: &str) -> Object {
+    if operator != "+" {
+        return Object::Error(format!("unknown operator: STRING {operator} STRING"));
+    }
+
+    Object::String(format!("{left}{right}"))
 }
 
 fn eval_integer_infix_expression(operator: &str, left: &i64, right: &i64) -> Object {
@@ -344,6 +358,7 @@ mod test {
                 "unknown operator: BOOLEAN + BOOLEAN",
             ),
             ("foobar", "identifier not found: foobar"),
+            ("\"Hello\" - \"World\"", "unknown operator: STRING - STRING"),
         ];
 
         for (input, expected_error) in tests {
@@ -369,6 +384,20 @@ mod test {
         for (input, expected) in tests {
             test_integer_object(&test_eval(input), expected);
         }
+    }
+
+    #[test]
+    fn test_string_concatenation() {
+        let input = "\"Hello\" + \" \" + \"World!\"";
+
+        let evaluated = test_eval(input);
+
+        let s = match evaluated {
+            Object::String(f) => f,
+            _ => panic!("object is not String. got={evaluated:?}"),
+        };
+
+        assert_eq!(s, "Hello World!");
     }
 
     #[test]
