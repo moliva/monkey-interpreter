@@ -8,6 +8,7 @@ use crate::ast::{BlockStatement, Identifier};
 pub(crate) enum Object {
     Null,
     Integer(Integer),
+    String(String),
     Boolean(Boolean),
     ReturnValue(Box<Object>),
     Error(String),
@@ -27,6 +28,7 @@ impl Object {
             Self::ReturnValue(_) => "RETURN",
             Self::Error(_) => "ERROR",
             Self::Function(_) => "FUNCTION",
+            Self::String(_) => "STRING",
         }
         .to_owned()
     }
@@ -46,6 +48,7 @@ impl Object {
 
                 format!("fn({params}) {}\n{body}\n{}", "{", "}")
             }
+            Self::String(s) => s.to_owned(),
         }
     }
 }

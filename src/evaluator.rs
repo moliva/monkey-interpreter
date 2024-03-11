@@ -81,7 +81,7 @@ pub(crate) fn eval(node: &Node, env: &mut RefCell<Environment>) -> Object {
 
                 apply_function(function, args)
             }
-            crate::ast::Expression::StringLiteral(e) => todo!(),
+            crate::ast::Expression::StringLiteral(e) => Object::String(e.value.clone()),
         },
     }
 }
@@ -279,6 +279,20 @@ mod test {
     use crate::{lexer::Lexer, parser::Parser};
 
     use super::*;
+
+    #[test]
+    fn test_string_literal() {
+        let input = "\"Hello World!\"";
+
+        let evaluated = test_eval(input);
+
+        let result = match evaluated {
+            Object::String(s) => s,
+            _ => panic!("object is not String. got={:?}", evaluated),
+        };
+
+        assert_eq!(result, "Hello World!");
+    }
 
     #[test]
     fn test_eval_integer_expression() {
