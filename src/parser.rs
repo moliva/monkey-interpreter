@@ -49,6 +49,44 @@ impl Parser {
         parser
     }
 
+    fn parse_array_literal(&mut self) -> Option<Expression> {
+        let token = self.current_token.clone();
+
+        let elements = self.parse_expression_list(Token::RBracket);
+
+        Some(Expression::ArrayLiteral(ArrayLiteral { token, elements }))
+    }
+
+    fn parse_expression_list(&mut self, end: Token) -> Vec<Expression> {
+        let mut list = Vec::default();
+
+        if self.peek_token == end {
+            self.next_token();
+            return list;
+        }
+
+        self.next_token();
+        list.push(
+            self.parse_expression(Precedence::Lowest)
+                .expect("expression"),
+        );
+
+        while self.peek_token == Token::Comma {
+            self.next_token();
+            self.next_token();
+            list.push(
+                self.parse_expression(Precedence::Lowest)
+                    .expect("expression"),
+            );
+        }
+
+        if !self.expect_peek(end.clone()) {
+            panic!("expected '{end:?}'");
+        }
+
+        list
+    }
+
     fn parse_function_literal(&mut self) -> Option<Expression> {
         let token = self.current_token.clone();
 
@@ -121,43 +159,13 @@ impl Parser {
 
         // TODO - should we validate that this is an identifier or function literal? - moliva - 2024/03/08
         let function = Box::new(function);
-        let arguments = self.parse_call_arguments();
+        let arguments = self.parse_expression_list(Token::RParen);
 
         Some(Expression::Call(CallExpression {
             token,
             function,
             arguments,
         }))
-    }
-
-    fn parse_call_arguments(&mut self) -> Vec<Expression> {
-        let mut args = Vec::default();
-
-        if self.peek_token == Token::RParen {
-            self.next_token();
-            return args;
-        }
-
-        self.next_token();
-        args.push(
-            self.parse_expression(Precedence::Lowest)
-                .expect("expression"),
-        );
-
-        while self.peek_token == Token::Comma {
-            self.next_token();
-            self.next_token();
-            args.push(
-                self.parse_expression(Precedence::Lowest)
-                    .expect("expression"),
-            );
-        }
-
-        if !self.expect_peek(Token::RParen) {
-            panic!("expected ')");
-        }
-
-        args
     }
 
     fn parse_infix_expression(&mut self, left: Expression) -> Option<Expression> {
@@ -453,6 +461,7 @@ impl Parser {
         self.register_prefix(LParen, Self::parse_grouped_expression);
         self.register_prefix(If, Self::parse_if_expression);
         self.register_prefix(Function, Self::parse_function_literal);
+        self.register_prefix(LBracket, Self::parse_array_literal);
     }
 
     fn parse_function_parameters(&mut self) -> Vec<Identifier> {
@@ -773,6 +782,42 @@ mod tests {
 
         assert_eq!(integer_literal.value, 5);
         assert_eq!(integer_literal.token_literal(), "5");
+    }
+
+    #[test]
+    fn test_parsing_array_literals() {
+        let input = "[1, 2 * 2, 3 +3]";
+
+        let program = parse_program(input);
+
+        assert_eq!(program.statements.len(), 1);
+
+        let statement = &program.statements[0];
+        let exp = match statement {
+            Statement::Expression(e) => e,
+            _ => panic!("statement not a Statement::Expression. got={:?}", statement),
+        };
+
+        let array = match &exp.expression {
+            Expression::ArrayLiteral(i) => i,
+            _ => panic!("expression not a Expression::ArrayLiteral. got={:?}", exp),
+        };
+
+        assert_eq!(array.elements.len(), 3);
+
+        test_integer_literal(&array.elements[0], 1);
+        test_infix_expression(
+            &array.elements[1],
+            LitVal::Integer(2),
+            "*",
+            LitVal::Integer(2),
+        );
+        test_infix_expression(
+            &array.elements[2],
+            LitVal::Integer(3),
+            "+",
+            LitVal::Integer(3),
+        );
     }
 
     #[test]

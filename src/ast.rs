@@ -83,12 +83,13 @@ pub(crate) struct Return {
 pub(crate) enum Expression {
     Identifier(Identifier),
     IntegerLiteral(IntegerLiteral),
-    StringLiteral(StringLiteral),
     Boolean(Boolean),
+    StringLiteral(StringLiteral),
+    ArrayLiteral(ArrayLiteral),
+    FunctionLiteral(FunctionLiteral),
     Prefix(PrefixExpression),
     Infix(InfixExpression),
     If(IfExpression),
-    FunctionLiteral(FunctionLiteral),
     Call(CallExpression),
 }
 
@@ -104,6 +105,7 @@ impl Expression {
             Expression::FunctionLiteral(FunctionLiteral { token, .. }) => token.literal(),
             Expression::Call(CallExpression { token, .. }) => token.literal(),
             Expression::StringLiteral(StringLiteral { token, .. }) => token.literal(),
+            Expression::ArrayLiteral(ArrayLiteral { token, .. }) => token.literal(),
         }
     }
 
@@ -118,6 +120,7 @@ impl Expression {
             Expression::FunctionLiteral(i) => i.string(),
             Expression::Call(i) => i.string(),
             Expression::StringLiteral(i) => i.string(),
+            Expression::ArrayLiteral(i) => i.string(),
         }
     }
 }
@@ -314,5 +317,22 @@ impl Program {
         // TODO - check this - moliva - 2024/03/04
         // self.statements.iter().map(|s| s.string()).join("\n")
         self.statements.iter().map(|s| s.string()).join("")
+    }
+}
+
+#[derive(Debug, Clone)]
+pub(crate) struct ArrayLiteral {
+    pub token: Token, // the '[' token
+    pub elements: Vec<Expression>,
+}
+
+impl ArrayLiteral {
+    pub fn token_literal(&self) -> String {
+        self.token.literal()
+    }
+
+    pub fn string(&self) -> String {
+        let elements = self.elements.iter().map(Expression::string).join(", ");
+        format!("[{elements}]")
     }
 }

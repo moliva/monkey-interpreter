@@ -76,6 +76,8 @@ impl Lexer {
             b',' => Comma,
             b'{' => LBrace,
             b'}' => RBrace,
+            b'[' => LBracket,
+            b']' => RBracket,
             b'"' => {
                 let s = self.read_string();
                 String(s)
@@ -200,6 +202,7 @@ if (5 < 10) {
 10 != 9;
 "foobar"
 "foo bar"
+[1, 2];
 "#;
 
         let tokens = vec![
@@ -278,6 +281,12 @@ if (5 < 10) {
             Semicolon,
             String("foobar".to_owned()),
             String("foo bar".to_owned()),
+            LBracket,
+            Int("1".to_owned()),
+            Comma,
+            Int("2".to_owned()),
+            RBracket,
+            Semicolon,
             EOF,
         ];
 
