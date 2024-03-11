@@ -83,6 +83,7 @@ pub(crate) struct Return {
 pub(crate) enum Expression {
     Identifier(Identifier),
     IntegerLiteral(IntegerLiteral),
+    StringLiteral(StringLiteral),
     Boolean(Boolean),
     Prefix(PrefixExpression),
     Infix(InfixExpression),
@@ -102,6 +103,7 @@ impl Expression {
             Expression::If(IfExpression { token, .. }) => token.literal(),
             Expression::FunctionLiteral(FunctionLiteral { token, .. }) => token.literal(),
             Expression::Call(CallExpression { token, .. }) => token.literal(),
+            Expression::StringLiteral(StringLiteral { token, .. }) => token.literal(),
         }
     }
 
@@ -115,6 +117,7 @@ impl Expression {
             Expression::If(i) => i.string(),
             Expression::FunctionLiteral(i) => i.string(),
             Expression::Call(i) => i.string(),
+            Expression::StringLiteral(i) => i.string(),
         }
     }
 }
@@ -250,6 +253,22 @@ impl FunctionLiteral {
 }
 
 #[derive(Debug, Clone)]
+pub(crate) struct StringLiteral {
+    pub token: Token,
+    pub value: String,
+}
+
+impl StringLiteral {
+    pub fn token_literal(&self) -> String {
+        self.token.literal()
+    }
+
+    pub fn string(&self) -> String {
+        self.token.literal()
+    }
+}
+
+#[derive(Debug, Clone)]
 pub(crate) struct IntegerLiteral {
     pub token: Token,
     pub value: i64,
@@ -288,10 +307,7 @@ pub struct Program {
 
 impl Program {
     pub fn token_literal(&self) -> String {
-        self.statements
-            .iter()
-            .map(|s| s.token_literal())
-            .join("\n")
+        self.statements.iter().map(|s| s.token_literal()).join("\n")
     }
 
     pub fn string(&self) -> String {

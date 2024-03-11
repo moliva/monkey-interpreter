@@ -81,6 +81,7 @@ pub(crate) fn eval(node: &Node, env: &mut RefCell<Environment>) -> Object {
 
                 apply_function(function, args)
             }
+            crate::ast::Expression::StringLiteral(e) => todo!(),
         },
     }
 }

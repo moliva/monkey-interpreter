@@ -245,6 +245,13 @@ impl Parser {
         Some(Expression::IntegerLiteral(IntegerLiteral { token, value }))
     }
 
+    fn parse_string_literal(&mut self) -> Option<Expression> {
+        let token = self.current_token.clone();
+        let value = token.literal();
+
+        Some(Expression::StringLiteral(StringLiteral { token, value }))
+    }
+
     fn parse_identifier(&mut self) -> Option<Expression> {
         let token = self.current_token.clone();
         let value = self.current_token.literal();
@@ -438,6 +445,7 @@ impl Parser {
 
         self.register_prefix(Ident("".to_owned()), Self::parse_identifier);
         self.register_prefix(Int("".to_owned()), Self::parse_integer_literal);
+        self.register_prefix(String("".to_owned()), Self::parse_string_literal);
         self.register_prefix(True, Self::parse_boolean);
         self.register_prefix(False, Self::parse_boolean);
         self.register_prefix(Bang, Self::parse_prefix_expression);
@@ -721,6 +729,27 @@ mod tests {
 
         assert_eq!(ident.value, "foobar");
         assert_eq!(ident.token_literal(), "foobar");
+    }
+
+    #[test]
+    fn test_string_literal_expression() {
+        let input = "\"hello world\"";
+
+        let program = parse_program(input);
+
+        let statement = &program.statements[0];
+        let exp = match statement {
+            Statement::Expression(e) => e,
+            _ => panic!("statement not a Statement::Expression. got={:?}", statement),
+        };
+
+        let string_literal = match &exp.expression {
+            Expression::StringLiteral(i) => i,
+            _ => panic!("expression not a Expression::StringLiteral. got={:?}", exp),
+        };
+
+        assert_eq!(string_literal.value, "hello world");
+        assert_eq!(string_literal.token_literal(), "hello world");
     }
 
     #[test]
