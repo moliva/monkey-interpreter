@@ -2,6 +2,7 @@ use std::cell::RefCell;
 
 use crate::{
     ast::{BlockStatement, Identifier, IfExpression, Node, Program, Statement},
+    builtins::BUILTINS,
     object::{Boolean, Environment, Function, Integer, Object},
 };
 
@@ -87,19 +88,20 @@ pub(crate) fn eval(node: &Node, env: &mut RefCell<Environment>) -> Object {
 }
 
 fn apply_function(function: Object, args: Vec<Object>) -> Object {
-    let Function {
-        parameters,
-        body,
-        env,
-    } = match function {
-        Object::Function(f) => f,
+    match function {
+        Object::Function(Function {
+            parameters,
+            body,
+            env,
+        }) => {
+            let mut extended_env = RefCell::new(extend_function_env(env, parameters, args));
+            let evaluated = eval(&Node::Statement(Statement::Block(body)), &mut extended_env);
+
+            unwrap_return_value(evaluated)
+        }
+        Object::BuiltinFunction(f) => f(args),
         _ => panic!("not a function: {}", function.r#type()),
-    };
-
-    let mut extended_env = RefCell::new(extend_function_env(env, parameters, args));
-    let evaluated = eval(&Node::Statement(Statement::Block(body)), &mut extended_env);
-
-    unwrap_return_value(evaluated)
+    }
 }
 
 fn unwrap_return_value(evaluated: Object) -> Object {
@@ -142,10 +144,15 @@ fn eval_expressions(
 }
 
 fn eval_identifier(identifier: &crate::ast::Identifier, env: &mut RefCell<Environment>) -> Object {
-    let identifier = &identifier.value;
+    let identifier: &str = &identifier.value;
     let env = env.borrow();
     let val = env.get(identifier);
-    val.unwrap_or_else(|| Object::Error(format!("identifier not found: {identifier}")))
+    val.or_else(|| {
+        BUILTINS
+            .get(identifier)
+            .map(|f| Object::BuiltinFunction(*f))
+    })
+    .unwrap_or_else(|| Object::Error(format!("identifier not found: {identifier}")))
 }
 
 fn eval_if_expression(e: &IfExpression, env: &mut RefCell<Environment>) -> Object {
@@ -412,6 +419,29 @@ addTwo(2);
 "#;
 
         test_integer_object(&test_eval(input), 4);
+    }
+
+    #[test]
+    fn test_builtin_functions() {
+        let tests = [
+            ("len(\"\")", Object::Integer(Integer(0))),
+            ("len(\"four\")", Object::Integer(Integer(4))),
+            ("len(\"hello world\")", Object::Integer(Integer(11))),
+            (
+                "len(1)",
+                Object::Error("argument to `len` not supported, got INTEGER".to_owned()),
+            ),
+            (
+                "len(\"one\", \"two\")",
+                Object::Error("wrong number of arguments. got=2, want=1".to_owned()),
+            ),
+        ];
+
+        for (input, expected) in tests {
+            let evaluated = test_eval(input);
+
+            assert_eq!(evaluated, expected);
+        }
     }
 
     #[test]

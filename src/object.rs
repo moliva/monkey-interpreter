@@ -4,6 +4,8 @@ use itertools::Itertools;
 
 use crate::ast::{BlockStatement, Identifier};
 
+pub(crate) type BuiltinFunction = fn(Vec<Object>) -> Object;
+
 #[derive(Debug, Clone, PartialEq)]
 pub(crate) enum Object {
     Null,
@@ -13,6 +15,7 @@ pub(crate) enum Object {
     ReturnValue(Box<Object>),
     Error(String),
     Function(Function),
+    BuiltinFunction(BuiltinFunction),
 }
 
 impl Object {
@@ -29,6 +32,7 @@ impl Object {
             Self::Error(_) => "ERROR",
             Self::Function(_) => "FUNCTION",
             Self::String(_) => "STRING",
+            Self::BuiltinFunction(_) => "BUILTIN",
         }
         .to_owned()
     }
@@ -49,6 +53,7 @@ impl Object {
                 format!("fn({params}) {}\n{body}\n{}", "{", "}")
             }
             Self::String(s) => s.to_owned(),
+            Self::BuiltinFunction(_) => "builtin function".to_owned(),
         }
     }
 }
