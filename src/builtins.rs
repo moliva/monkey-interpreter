@@ -93,7 +93,7 @@ fn rest(mut args: Vec<Object>) -> Object {
                 if a.is_empty() {
                     Object::Null
                 } else {
-                    Object::Array(a[1..a.len()].iter().cloned().collect())
+                    Object::Array(a[1..a.len()].to_vec())
                 }
             }
             _ => Object::Error(format!(
@@ -111,8 +111,8 @@ fn push(mut args: Vec<Object>) -> Object {
             args.len()
         ))
     } else {
-        let array = args.pop().unwrap();
         let elem = args.pop().unwrap();
+        let array = args.pop().unwrap();
 
         match array {
             Object::Array(a) => {
@@ -122,7 +122,7 @@ fn push(mut args: Vec<Object>) -> Object {
                 Object::Array(a)
             }
             _ => Object::Error(format!(
-                "argument to `rest` not supported, got {}",
+                "argument to `push` not supported, got {}",
                 array.r#type()
             )),
         }

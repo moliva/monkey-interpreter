@@ -1,4 +1,4 @@
-use std::cell::RefCell;
+use std::{cell::RefCell, rc::Rc};
 
 use crate::{
     ast::{BlockStatement, Identifier, IfExpression, Node, Program, Statement},
@@ -6,7 +6,7 @@ use crate::{
     object::{Boolean, Environment, Function, Integer, Object},
 };
 
-pub(crate) fn eval(node: &Node, env: &mut RefCell<Environment>) -> Object {
+pub(crate) fn eval(node: &Node, env: &Rc<RefCell<Environment>>) -> Object {
     use Node::*;
 
     match node {
@@ -61,8 +61,7 @@ pub(crate) fn eval(node: &Node, env: &mut RefCell<Environment>) -> Object {
             crate::ast::Expression::FunctionLiteral(f) => {
                 let parameters = f.parameters.clone();
                 let body = f.body.clone();
-                // TODO - should this be an rc? - moliva - 2024/03/12
-                let env = RefCell::clone(env);
+                let env = Rc::clone(env);
 
                 Object::Function(Function {
                     parameters,
@@ -137,8 +136,8 @@ fn apply_function(function: Object, args: Vec<Object>) -> Object {
             body,
             env,
         }) => {
-            let mut extended_env = RefCell::new(extend_function_env(env, parameters, args));
-            let evaluated = eval(&Node::Statement(Statement::Block(body)), &mut extended_env);
+            let extended_env = Rc::new(RefCell::new(extend_function_env(env, parameters, args)));
+            let evaluated = eval(&Node::Statement(Statement::Block(body)), &extended_env);
 
             unwrap_return_value(evaluated)
         }
@@ -155,7 +154,7 @@ fn unwrap_return_value(evaluated: Object) -> Object {
 }
 
 fn extend_function_env(
-    env: RefCell<Environment>,
+    env: Rc<RefCell<Environment>>,
     parameters: Vec<Identifier>,
     args: Vec<Object>,
 ) -> Environment {
@@ -170,7 +169,7 @@ fn extend_function_env(
 
 fn eval_expressions(
     expressions: &Vec<crate::ast::Expression>,
-    env: &mut RefCell<Environment>,
+    env: &Rc<RefCell<Environment>>,
 ) -> Vec<Object> {
     let mut result = Vec::default();
 
@@ -186,7 +185,7 @@ fn eval_expressions(
     result
 }
 
-fn eval_identifier(identifier: &crate::ast::Identifier, env: &mut RefCell<Environment>) -> Object {
+fn eval_identifier(identifier: &crate::ast::Identifier, env: &Rc<RefCell<Environment>>) -> Object {
     let identifier: &str = &identifier.value;
     let env = env.borrow();
     let val = env.get(identifier);
@@ -198,7 +197,7 @@ fn eval_identifier(identifier: &crate::ast::Identifier, env: &mut RefCell<Enviro
     .unwrap_or_else(|| Object::Error(format!("identifier not found: {identifier}")))
 }
 
-fn eval_if_expression(e: &IfExpression, env: &mut RefCell<Environment>) -> Object {
+fn eval_if_expression(e: &IfExpression, env: &Rc<RefCell<Environment>>) -> Object {
     let condition = eval(&Node::Expression(*e.condition.clone()), env);
     if condition.is_error() {
         return condition;
@@ -300,7 +299,7 @@ fn eval_bang_operator_expression(right: &Object) -> Object {
     Object::Boolean(Boolean(!val))
 }
 
-fn eval_block_statement(block: &BlockStatement, env: &mut RefCell<Environment>) -> Object {
+fn eval_block_statement(block: &BlockStatement, env: &Rc<RefCell<Environment>>) -> Object {
     let statements = &block.statements;
 
     let mut result = None;
@@ -318,7 +317,7 @@ fn eval_block_statement(block: &BlockStatement, env: &mut RefCell<Environment>) 
     result.unwrap()
 }
 
-fn eval_program(program: &Program, env: &mut RefCell<Environment>) -> Object {
+fn eval_program(program: &Program, env: &Rc<RefCell<Environment>>) -> Object {
     let statements = &program.statements;
 
     let mut result = None;
@@ -516,6 +515,7 @@ addTwo(2);
     #[test]
     fn test_builtin_functions() {
         let tests = [
+            // len
             ("len(\"\")", Object::Integer(Integer(0))),
             ("len(\"four\")", Object::Integer(Integer(4))),
             ("len(\"hello world\")", Object::Integer(Integer(11))),
@@ -528,11 +528,18 @@ addTwo(2);
                 Object::Error("wrong number of arguments. got=2, want=1".to_owned()),
             ),
             ("len([1, 2, 3])", Object::Integer(Integer(3))),
+            // first
             ("first([1, 2, 3])", Object::Integer(Integer(1))),
             ("first([])", Object::Null),
+            // last
             ("last([1, 2, 3])", Object::Integer(Integer(3))),
             ("last([])", Object::Null),
+            // rest
             ("rest([])", Object::Null),
+            (
+                "rest([2,3])",
+                Object::Array(vec![Object::Integer(Integer(3))]),
+            ),
             (
                 "rest([1,2,3])",
                 Object::Array(vec![
@@ -541,6 +548,22 @@ addTwo(2);
                 ]),
             ),
             ("rest([3])", Object::Array(vec![])),
+            // push
+            (
+                "push(1, 1)",
+                Object::Error("argument to `push` not supported, got INTEGER".to_owned()),
+            ),
+            (
+                "push([], 1)",
+                Object::Array(vec![Object::Integer(Integer(1))]),
+            ),
+            (
+                "push([1], 2)",
+                Object::Array(vec![
+                    Object::Integer(Integer(1)),
+                    Object::Integer(Integer(2)),
+                ]),
+            ),
         ];
 
         for (input, expected) in tests {
@@ -721,9 +744,9 @@ map(a, double);
 
         let program = parser.parse_program();
 
-        let mut env = RefCell::new(Environment::default());
+        let env = Rc::new(RefCell::new(Environment::default()));
 
-        eval(&Node::Program(program), &mut env)
+        eval(&Node::Program(program), &env)
     }
 
     fn test_boolean_object(evaluated: &Object, expected: bool) {

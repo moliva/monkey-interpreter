@@ -3,6 +3,7 @@ use anyhow::Result;
 use std::{
     cell::RefCell,
     io::{Stdin, Stdout, Write},
+    rc::Rc,
 };
 
 use crate::{ast::Node, evaluator::eval, lexer::Lexer, object::Environment, parser::Parser};
@@ -11,7 +12,7 @@ const PROMPT: &str = ">> ";
 
 pub fn start(in_: Stdin, out: &mut Stdout) -> Result<()> {
     let mut input = String::new();
-    let mut env = RefCell::new(Environment::default());
+    let env = Rc::new(RefCell::new(Environment::default()));
 
     loop {
         write!(out, "{}", PROMPT)?;
@@ -29,7 +30,7 @@ pub fn start(in_: Stdin, out: &mut Stdout) -> Result<()> {
             continue;
         }
 
-        let evaluated = eval(&Node::Program(program), &mut env);
+        let evaluated = eval(&Node::Program(program), &env);
         writeln!(out, "{}", evaluated.inspect())?;
 
         input.clear();
