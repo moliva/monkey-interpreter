@@ -6,7 +6,7 @@ use crate::ast::{BlockStatement, Identifier};
 
 pub(crate) type BuiltinFunction = fn(Vec<Object>) -> Object;
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub(crate) enum Object {
     Null,
     Integer(Integer),
@@ -102,10 +102,10 @@ impl Environment {
     }
 }
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub(crate) struct Integer(pub i64);
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub(crate) struct Boolean(pub bool);
 
 #[derive(Debug, Clone)]
@@ -114,6 +114,14 @@ pub(crate) struct Hash(pub HashMap<Object, Object>);
 impl PartialEq for Hash {
     fn eq(&self, other: &Self) -> bool {
         std::ptr::eq(&self.0, &other.0)
+    }
+}
+
+impl Eq for Hash {}
+
+impl std::hash::Hash for Hash {
+    fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
+        std::ptr::hash(&self.0, state);
     }
 }
 
@@ -131,3 +139,13 @@ impl PartialEq for Function {
             && std::ptr::eq(&self.env, &other.env)
     }
 }
+
+impl std::hash::Hash for Function {
+    fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
+        std::ptr::hash(&self.parameters, state);
+        std::ptr::hash(&self.body, state);
+        std::ptr::hash(&self.env, state);
+    }
+}
+
+impl Eq for Function {}
