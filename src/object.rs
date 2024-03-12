@@ -12,9 +12,10 @@ pub(crate) enum Object {
     Integer(Integer),
     String(String),
     Boolean(Boolean),
+    Array(Vec<Object>),
+    Hash(Hash),
     Function(Function),
     BuiltinFunction(BuiltinFunction),
-    Array(Vec<Object>),
     ReturnValue(Box<Object>),
     Error(String),
 }
@@ -35,6 +36,7 @@ impl Object {
             Object::String(_) => "STRING",
             Object::BuiltinFunction(_) => "BUILTIN",
             Object::Array(_) => "ARRAY",
+            Object::Hash(_) => "HASH",
         }
         .to_owned()
     }
@@ -59,6 +61,14 @@ impl Object {
             Object::Array(a) => {
                 let elements = a.iter().map(Object::inspect).join(", ");
                 format!("[{elements}]")
+            }
+            Object::Hash(Hash(pairs)) => {
+                let pairs = pairs
+                    .iter()
+                    .map(|(k, v)| format!("{}: {}", k.inspect(), v.inspect()))
+                    .join(", ");
+
+                format!("{{{pairs}}}")
             }
         }
     }
@@ -97,6 +107,15 @@ pub(crate) struct Integer(pub i64);
 
 #[derive(Debug, Clone, PartialEq)]
 pub(crate) struct Boolean(pub bool);
+
+#[derive(Debug, Clone)]
+pub(crate) struct Hash(pub HashMap<Object, Object>);
+
+impl PartialEq for Hash {
+    fn eq(&self, other: &Self) -> bool {
+        std::ptr::eq(&self.0, &other.0)
+    }
+}
 
 #[derive(Debug, Clone)]
 pub(crate) struct Function {
