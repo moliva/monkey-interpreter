@@ -61,6 +61,7 @@ pub(crate) fn eval(node: &Node, env: &mut RefCell<Environment>) -> Object {
             crate::ast::Expression::FunctionLiteral(f) => {
                 let parameters = f.parameters.clone();
                 let body = f.body.clone();
+                // TODO - should this be an rc? - moliva - 2024/03/12
                 let env = RefCell::clone(env);
 
                 Object::Function(Function {
@@ -526,6 +527,20 @@ addTwo(2);
                 "len(\"one\", \"two\")",
                 Object::Error("wrong number of arguments. got=2, want=1".to_owned()),
             ),
+            ("len([1, 2, 3])", Object::Integer(Integer(3))),
+            ("first([1, 2, 3])", Object::Integer(Integer(1))),
+            ("first([])", Object::Null),
+            ("last([1, 2, 3])", Object::Integer(Integer(3))),
+            ("last([])", Object::Null),
+            ("rest([])", Object::Null),
+            (
+                "rest([1,2,3])",
+                Object::Array(vec![
+                    Object::Integer(Integer(2)),
+                    Object::Integer(Integer(3)),
+                ]),
+            ),
+            ("rest([3])", Object::Array(vec![])),
         ];
 
         for (input, expected) in tests {
@@ -533,6 +548,37 @@ addTwo(2);
 
             assert_eq!(evaluated, expected);
         }
+    }
+
+    #[test]
+    fn test_custom_embedded_function() {
+        let input = r#"
+let map = fn(arr, f) {
+  let iter = fn(arr, accumulated) {
+    if (len(arr) == 0) {
+      accumulated
+    } else {
+      iter(rest(arr), push(accumulated, f(first(arr))));
+    }
+  };
+
+  iter(arr, []);
+};
+
+let a = [1, 2];
+let double = fn(x) { x * 2 };
+
+map(a, double);
+"#;
+
+        let evaluated = test_eval(input);
+        assert_eq!(
+            evaluated,
+            Object::Array(vec![
+                Object::Integer(Integer(2)),
+                Object::Integer(Integer(4))
+            ])
+        );
     }
 
     #[test]
