@@ -91,6 +91,7 @@ pub(crate) enum Expression {
     Infix(InfixExpression),
     If(IfExpression),
     Call(CallExpression),
+    IndexOperator(IndexOperator),
 }
 
 impl Expression {
@@ -106,6 +107,7 @@ impl Expression {
             Expression::Call(CallExpression { token, .. }) => token.literal(),
             Expression::StringLiteral(StringLiteral { token, .. }) => token.literal(),
             Expression::ArrayLiteral(ArrayLiteral { token, .. }) => token.literal(),
+            Expression::IndexOperator(IndexOperator { token, .. }) => token.literal(),
         }
     }
 
@@ -121,6 +123,7 @@ impl Expression {
             Expression::Call(i) => i.string(),
             Expression::StringLiteral(i) => i.string(),
             Expression::ArrayLiteral(i) => i.string(),
+            Expression::IndexOperator(i) => i.string(),
         }
     }
 }
@@ -333,6 +336,24 @@ impl ArrayLiteral {
 
     pub fn string(&self) -> String {
         let elements = self.elements.iter().map(Expression::string).join(", ");
+
         format!("[{elements}]")
+    }
+}
+
+#[derive(Debug, Clone)]
+pub(crate) struct IndexOperator {
+    pub token: Token, // the '[' token
+    pub left: Box<Expression>,
+    pub index: Box<Expression>,
+}
+
+impl IndexOperator {
+    pub fn token_literal(&self) -> String {
+        self.token.literal()
+    }
+
+    pub fn string(&self) -> String {
+        format!("({}[{}])", self.left.string(), self.index.string())
     }
 }

@@ -12,10 +12,11 @@ pub(crate) enum Object {
     Integer(Integer),
     String(String),
     Boolean(Boolean),
-    ReturnValue(Box<Object>),
-    Error(String),
     Function(Function),
     BuiltinFunction(BuiltinFunction),
+    Array(Vec<Object>),
+    ReturnValue(Box<Object>),
+    Error(String),
 }
 
 impl Object {
@@ -25,26 +26,27 @@ impl Object {
 
     pub fn r#type(&self) -> String {
         match self {
-            Self::Null => "NULL",
-            Self::Integer(_) => "INTEGER",
-            Self::Boolean(_) => "BOOLEAN",
-            Self::ReturnValue(_) => "RETURN",
-            Self::Error(_) => "ERROR",
-            Self::Function(_) => "FUNCTION",
-            Self::String(_) => "STRING",
-            Self::BuiltinFunction(_) => "BUILTIN",
+            Object::Null => "NULL",
+            Object::Integer(_) => "INTEGER",
+            Object::Boolean(_) => "BOOLEAN",
+            Object::ReturnValue(_) => "RETURN",
+            Object::Error(_) => "ERROR",
+            Object::Function(_) => "FUNCTION",
+            Object::String(_) => "STRING",
+            Object::BuiltinFunction(_) => "BUILTIN",
+            Object::Array(_) => "ARRAY",
         }
         .to_owned()
     }
 
     pub fn inspect(&self) -> String {
         match self {
-            Self::Integer(Integer(value)) => value.to_string(),
-            Self::Boolean(Boolean(value)) => value.to_string(),
-            Self::Null => "null".to_owned(),
-            Self::ReturnValue(v) => v.inspect(),
-            Self::Error(message) => format!("ERROR: {message}"),
-            Self::Function(Function {
+            Object::Integer(Integer(value)) => value.to_string(),
+            Object::Boolean(Boolean(value)) => value.to_string(),
+            Object::Null => "null".to_owned(),
+            Object::ReturnValue(v) => v.inspect(),
+            Object::Error(message) => format!("ERROR: {message}"),
+            Object::Function(Function {
                 parameters, body, ..
             }) => {
                 let params = parameters.iter().map(Identifier::string).join(", ");
@@ -52,8 +54,12 @@ impl Object {
 
                 format!("fn({params}) {}\n{body}\n{}", "{", "}")
             }
-            Self::String(s) => s.to_owned(),
-            Self::BuiltinFunction(_) => "builtin function".to_owned(),
+            Object::String(s) => format!("\"{s}\""),
+            Object::BuiltinFunction(_) => "builtin function".to_owned(),
+            Object::Array(a) => {
+                let elements = a.iter().map(Object::inspect).join(", ");
+                format!("[{elements}]")
+            }
         }
     }
 }

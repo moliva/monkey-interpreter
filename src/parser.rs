@@ -12,6 +12,7 @@ enum Precedence {
     Product,     // *
     Prefix,      // -X or !X
     Call,        // myFunction(X)
+    Index,       // array[index]
 }
 
 type PrefixParseFn = fn(p: &mut Parser) -> Option<Expression>;
@@ -152,6 +153,27 @@ impl Parser {
             consequence,
             alternative,
         }))
+    }
+
+    fn parse_index_expression(&mut self, left: Expression) -> Option<Expression> {
+        let token = self.current_token.clone();
+
+        let left = Box::new(left);
+
+        self.next_token();
+        let index = self.parse_expression(Precedence::Lowest);
+
+        if !self.expect_peek(Token::RBracket) {
+            return None;
+        }
+
+        index.map(|index| {
+            Expression::IndexOperator(IndexOperator {
+                token,
+                left,
+                index: Box::new(index),
+            })
+        })
     }
 
     fn parse_call_expression(&mut self, function: Expression) -> Option<Expression> {
@@ -507,6 +529,7 @@ impl Parser {
         }
 
         self.register_infix(LParen, Self::parse_call_expression);
+        self.register_infix(LBracket, Self::parse_index_expression);
     }
 }
 
@@ -520,6 +543,7 @@ const fn fetch_precedence(token_type: &Token) -> Option<Precedence> {
         Plus | Minus => Sum,
         Slash | Asterisk => Product,
         LParen => Call,
+        LBracket => Index,
         _ => return None,
     })
 }
@@ -904,6 +928,15 @@ mod tests {
                 "add(a + b + c * d / f + g)",
                 "add((((a + b) + ((c * d) / f)) + g))",
             ),
+            // index operator
+            (
+                "a * [1, 2, 3, 4][b * c] * d",
+                "((a * ([1, 2, 3, 4][(b * c)])) * d)",
+            ),
+            (
+                "add(a * b[2], b[1], 2 * [1, 2][1])",
+                "add((a * (b[2])), (b[1]), (2 * ([1, 2][1])))",
+            ),
         ];
 
         for (input, expected) in tests {
@@ -993,6 +1026,34 @@ mod tests {
             LitVal::Identifier("x".to_owned()),
             "+",
             LitVal::Identifier("y".to_owned()),
+        );
+    }
+
+    #[test]
+    fn test_parsing_index_expressions() {
+        let input = "myArray[1 + 1]";
+
+        let program = parse_program(input);
+
+        assert_eq!(program.statements.len(), 1);
+
+        let statement = &program.statements[0];
+        let exp = match statement {
+            Statement::Expression(e) => e,
+            _ => panic!("statement not a Statement::Expression. got={:?}", statement),
+        };
+
+        let index_exp = match &exp.expression {
+            Expression::IndexOperator(e) => e,
+            _ => panic!("expression not a Expression::IndexOperator. got={:?}", exp),
+        };
+
+        test_identifier(&index_exp.left, "myArray");
+        test_infix_expression(
+            &index_exp.index,
+            LitVal::Integer(1),
+            "+",
+            LitVal::Integer(1),
         );
     }
 

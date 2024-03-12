@@ -83,8 +83,49 @@ pub(crate) fn eval(node: &Node, env: &mut RefCell<Environment>) -> Object {
                 apply_function(function, args)
             }
             crate::ast::Expression::StringLiteral(e) => Object::String(e.value.clone()),
-            crate::ast::Expression::ArrayLiteral(_) => todo!(),
+            crate::ast::Expression::ArrayLiteral(e) => {
+                let elements = eval_expressions(&e.elements, env);
+
+                if elements.len() == 1 && elements[0].is_error() {
+                    return elements[0].clone();
+                }
+
+                Object::Array(elements)
+            }
+            crate::ast::Expression::IndexOperator(e) => {
+                let left = eval(&Node::Expression(*e.left.clone()), env);
+                if left.is_error() {
+                    return left;
+                }
+
+                let index = eval(&Node::Expression(*e.index.clone()), env);
+                if index.is_error() {
+                    return index;
+                }
+
+                eval_index_expression(left, index)
+            }
         },
+    }
+}
+
+fn eval_index_expression(left: Object, index: Object) -> Object {
+    let left_type = left.r#type();
+
+    if let Object::Array(left) = left {
+        if let Object::Integer(Integer(index)) = index {
+            return eval_array_index_expression(left, index);
+        }
+    }
+
+    Object::Error(format!("index operator not supported: {}", left_type))
+}
+
+fn eval_array_index_expression(left: Vec<Object>, index: i64) -> Object {
+    if index < 0 || index as usize >= left.len() {
+        Object::Null
+    } else {
+        left[index as usize].clone()
     }
 }
 
@@ -377,6 +418,55 @@ mod test {
             } else {
                 panic!("expected error from {input}, got {evaluated:?}");
             }
+        }
+    }
+
+    #[test]
+    fn test_array_literals() {
+        let input = "[1, 2 * 2, 3 + 3]";
+
+        let evaluated = test_eval(input);
+
+        let result = match evaluated {
+            Object::Array(f) => f,
+            _ => panic!("object is not Array. got={evaluated:?}"),
+        };
+
+        assert_eq!(result.len(), 3);
+
+        test_integer_object(&result[0], 1);
+        test_integer_object(&result[1], 4);
+        test_integer_object(&result[2], 6);
+    }
+
+    #[test]
+    fn test_array_index_expressions() {
+        let tests = [
+            ("[1, 2, 3][0]", Object::Integer(Integer(1))),
+            ("[1, 2, 3][1]", Object::Integer(Integer(2))),
+            ("[1, 2, 3][2]", Object::Integer(Integer(3))),
+            ("let i = 0; [1][i];", Object::Integer(Integer(1))),
+            ("[1, 2, 3][1 + 1];", Object::Integer(Integer(3))),
+            (
+                "let myArray = [1, 2, 3]; myArray[2];",
+                Object::Integer(Integer(3)),
+            ),
+            (
+                "let myArray = [1, 2, 3]; myArray[0] + myArray[1] + myArray[2];",
+                Object::Integer(Integer(6)),
+            ),
+            (
+                "let myArray = [1, 2, 3]; let i = myArray[0]; myArray[i]",
+                Object::Integer(Integer(2)),
+            ),
+            ("[1, 2, 3][3]", Object::Null),
+            ("[1, 2, 3][-1]", Object::Null),
+        ];
+
+        for (input, expected) in tests {
+            let evaluated = test_eval(input);
+
+            assert_eq!(evaluated, expected);
         }
     }
 
