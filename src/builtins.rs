@@ -11,6 +11,7 @@ lazy_static! {
         builtins.insert("last", last);
         builtins.insert("rest", rest);
         builtins.insert("push", push);
+        builtins.insert("puts", puts);
         builtins
     };
 }
@@ -127,4 +128,11 @@ fn push(mut args: Vec<Object>) -> Object {
             )),
         }
     }
+}
+
+fn puts(args: Vec<Object>) -> Object {
+    for arg in args {
+        println!("{}", arg.inspect());
+    }
+    Object::Null
 }
