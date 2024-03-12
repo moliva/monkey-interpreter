@@ -3,10 +3,10 @@ use std::{cell::RefCell, rc::Rc};
 use crate::{
     ast::{BlockStatement, Identifier, IfExpression, Node, Program, Statement},
     builtins::BUILTINS,
-    object::{Boolean, Environment, Function, Integer, Object},
+    object::{Boolean, Environment, Function, Integer, Object, SharedEnvironment},
 };
 
-pub(crate) fn eval(node: &Node, env: &Rc<RefCell<Environment>>) -> Object {
+pub(crate) fn eval(node: &Node, env: &SharedEnvironment) -> Object {
     use Node::*;
 
     match node {
@@ -154,7 +154,7 @@ fn unwrap_return_value(evaluated: Object) -> Object {
 }
 
 fn extend_function_env(
-    env: Rc<RefCell<Environment>>,
+    env: SharedEnvironment,
     parameters: Vec<Identifier>,
     args: Vec<Object>,
 ) -> Environment {
@@ -169,7 +169,7 @@ fn extend_function_env(
 
 fn eval_expressions(
     expressions: &Vec<crate::ast::Expression>,
-    env: &Rc<RefCell<Environment>>,
+    env: &SharedEnvironment,
 ) -> Vec<Object> {
     let mut result = Vec::default();
 
@@ -185,7 +185,7 @@ fn eval_expressions(
     result
 }
 
-fn eval_identifier(identifier: &crate::ast::Identifier, env: &Rc<RefCell<Environment>>) -> Object {
+fn eval_identifier(identifier: &crate::ast::Identifier, env: &SharedEnvironment) -> Object {
     let identifier: &str = &identifier.value;
     let env = env.borrow();
     let val = env.get(identifier);
@@ -197,7 +197,7 @@ fn eval_identifier(identifier: &crate::ast::Identifier, env: &Rc<RefCell<Environ
     .unwrap_or_else(|| Object::Error(format!("identifier not found: {identifier}")))
 }
 
-fn eval_if_expression(e: &IfExpression, env: &Rc<RefCell<Environment>>) -> Object {
+fn eval_if_expression(e: &IfExpression, env: &SharedEnvironment) -> Object {
     let condition = eval(&Node::Expression(*e.condition.clone()), env);
     if condition.is_error() {
         return condition;
@@ -299,7 +299,7 @@ fn eval_bang_operator_expression(right: &Object) -> Object {
     Object::Boolean(Boolean(!val))
 }
 
-fn eval_block_statement(block: &BlockStatement, env: &Rc<RefCell<Environment>>) -> Object {
+fn eval_block_statement(block: &BlockStatement, env: &SharedEnvironment) -> Object {
     let statements = &block.statements;
 
     let mut result = None;
@@ -317,7 +317,7 @@ fn eval_block_statement(block: &BlockStatement, env: &Rc<RefCell<Environment>>) 
     result.unwrap()
 }
 
-fn eval_program(program: &Program, env: &Rc<RefCell<Environment>>) -> Object {
+fn eval_program(program: &Program, env: &SharedEnvironment) -> Object {
     let statements = &program.statements;
 
     let mut result = None;

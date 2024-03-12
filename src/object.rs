@@ -64,16 +64,18 @@ impl Object {
     }
 }
 
+pub(crate) type SharedEnvironment = Rc<RefCell<Environment>>;
+
 #[derive(Debug, Clone, Default)]
 pub(crate) struct Environment {
     store: HashMap<String, Object>,
-    outer: Option<Box<Rc<RefCell<Environment>>>>,
+    outer: Option<SharedEnvironment>,
 }
 
 impl Environment {
-    pub fn enclosed(outer: Rc<RefCell<Self>>) -> Self {
+    pub fn enclosed(outer: SharedEnvironment) -> Self {
         Self {
-            outer: Some(Box::new(outer)),
+            outer: Some(outer),
             ..Default::default()
         }
     }
@@ -100,7 +102,7 @@ pub(crate) struct Boolean(pub bool);
 pub(crate) struct Function {
     pub parameters: Vec<Identifier>,
     pub body: BlockStatement,
-    pub env: Rc<RefCell<Environment>>,
+    pub env: SharedEnvironment,
 }
 
 impl PartialEq for Function {
