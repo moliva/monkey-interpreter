@@ -1,3 +1,5 @@
+use std::collections::HashMap;
+
 use itertools::Itertools;
 
 use crate::token::Token;
@@ -86,6 +88,7 @@ pub(crate) enum Expression {
     Boolean(Boolean),
     StringLiteral(StringLiteral),
     ArrayLiteral(ArrayLiteral),
+    HashLiteral(HashLiteral),
     FunctionLiteral(FunctionLiteral),
     Prefix(PrefixExpression),
     Infix(InfixExpression),
@@ -108,6 +111,7 @@ impl Expression {
             Expression::StringLiteral(StringLiteral { token, .. }) => token.literal(),
             Expression::ArrayLiteral(ArrayLiteral { token, .. }) => token.literal(),
             Expression::IndexOperator(IndexOperator { token, .. }) => token.literal(),
+            Expression::HashLiteral(_) => todo!(),
         }
     }
 
@@ -124,6 +128,7 @@ impl Expression {
             Expression::StringLiteral(i) => i.string(),
             Expression::ArrayLiteral(i) => i.string(),
             Expression::IndexOperator(i) => i.string(),
+            Expression::HashLiteral(_) => todo!(),
         }
     }
 }
@@ -320,6 +325,28 @@ impl Program {
         // TODO - check this - moliva - 2024/03/04
         // self.statements.iter().map(|s| s.string()).join("\n")
         self.statements.iter().map(|s| s.string()).join("")
+    }
+}
+
+#[derive(Debug, Clone)]
+pub(crate) struct HashLiteral {
+    pub token: Token, // the '{' token
+    pub pairs: Vec<(Expression, Expression)>,
+}
+
+impl HashLiteral {
+    pub fn token_literal(&self) -> String {
+        self.token.literal()
+    }
+
+    pub fn string(&self) -> String {
+        let pairs = self
+            .pairs
+            .iter()
+            .map(|(k, v)| format!("{}:{}", k.string(), v.string()))
+            .join(", ");
+
+        format!("{{{pairs}}}")
     }
 }
 

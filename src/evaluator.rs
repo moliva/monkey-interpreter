@@ -105,6 +105,7 @@ pub(crate) fn eval(node: &Node, env: &SharedEnvironment) -> Object {
 
                 eval_index_expression(left, index)
             }
+            crate::ast::Expression::HashLiteral(_) => todo!(),
         },
     }
 }

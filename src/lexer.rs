@@ -70,10 +70,13 @@ impl Lexer {
             b'*' => Asterisk,
             b'<' => Lt,
             b'>' => Gt,
+            // delimiters
             b';' => Semicolon,
+            b',' => Comma,
+            b':' => Colon,
+            // enclosing
             b'(' => LParen,
             b')' => RParen,
-            b',' => Comma,
             b'{' => LBrace,
             b'}' => RBrace,
             b'[' => LBracket,
@@ -203,6 +206,7 @@ if (5 < 10) {
 "foobar"
 "foo bar"
 [1, 2];
+{"foo": "bar"}
 "#;
 
         let tokens = vec![
@@ -287,6 +291,11 @@ if (5 < 10) {
             Int("2".to_owned()),
             RBracket,
             Semicolon,
+            LBrace,
+            String("foo".to_owned()),
+            Colon,
+            String("bar".to_owned()),
+            RBrace,
             EOF,
         ];
 

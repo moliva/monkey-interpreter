@@ -27,6 +27,7 @@ pub enum Token {
     // delimiters
     Comma,
     Semicolon,
+    Colon,
 
     LParen,
     RParen,
@@ -62,6 +63,7 @@ impl Token {
             Token::NotEq => "!=",
             Token::Comma => ",",
             Token::Semicolon => ";",
+            Token::Colon => ":",
             Token::LParen => "(",
             Token::RParen => ")",
             Token::LBrace => "{",
