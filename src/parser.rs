@@ -592,6 +592,17 @@ mod tests {
 
     use super::Parser;
 
+    /// Tries to match a given expression to a pattern and return the identifier given in the
+    /// pattern, failing otherwise.
+    macro_rules! match_or_fail {
+        ($expression:expr, $pattern:pat => $identifier:ident) => {
+            match $expression {
+                $pattern => $identifier,
+                _ => panic!("not expected type from expression {:?}", $expression),
+            }
+        };
+    }
+
     #[test]
     fn test_return_statements() {
         // (input, expected_value)
@@ -604,19 +615,9 @@ mod tests {
         for (input, expected_value) in tests {
             let program = parse_program(input);
 
-            if program.statements.len() != 1 {
-                panic!(
-                    "program.statements does not contain 1 statement. got={}",
-                    program.statements.len()
-                );
-            }
+            assert_eq!(program.statements.len(), 1);
 
-            let statement = &program.statements[0];
-
-            let return_statement = match statement {
-                Statement::Return(r) => r,
-                _ => panic!("not a return statement"),
-            };
+            let return_statement = match_or_fail!(&program.statements[0], Statement::Return(r)=> r);
 
             assert_eq!(return_statement.token.literal(), "return");
             test_literal_expression(&return_statement.return_value, expected_value);
@@ -631,19 +632,8 @@ mod tests {
 
         assert_eq!(program.statements.len(), 1);
 
-        let statement = &program.statements[0];
-        let exp = match statement {
-            Statement::Expression(e) => e,
-            _ => panic!("statement not a Statement::Expression. got={:?}", statement),
-        };
-
-        let exp = match &exp.expression {
-            Expression::If(e) => e,
-            _ => panic!(
-                "expression not a Expression::IfExpression. got={:?}",
-                exp.expression
-            ),
-        };
+        let exp = match_or_fail!(&program.statements[0], Statement::Expression(e) => e);
+        let exp = match_or_fail!(&exp.expression, Expression::If(e) => e);
 
         test_infix_expression(
             &exp.condition,
@@ -653,11 +643,8 @@ mod tests {
         );
         assert_eq!(exp.consequence.statements.len(), 1);
 
-        let consequence = &exp.consequence.statements[0];
-        let consequence = match consequence {
-            Statement::Expression(e) => e,
-            _ => panic!("statement not a Statement::Expression. got={:?}", statement),
-        };
+        let consequence =
+            match_or_fail!(&exp.consequence.statements[0], Statement::Expression(e) => e);
 
         test_identifier(&consequence.expression, "x");
         assert!(exp.alternative.is_none());
@@ -730,12 +717,7 @@ mod tests {
         for (input, expected_identifier, expected_value) in tests {
             let program = parse_program(input);
 
-            if program.statements.len() != 1 {
-                panic!(
-                    "program.statements does not contain 1 statement. got={}",
-                    program.statements.len()
-                );
-            }
+            assert_eq!(program.statements.len(), 1);
 
             let statement = &program.statements[0];
 
@@ -761,16 +743,8 @@ mod tests {
 
         assert_eq!(program.statements.len(), 1);
 
-        let statement = &program.statements[0];
-        let exp = match statement {
-            Statement::Expression(e) => e,
-            _ => panic!("statement not a Statement::Expression. got={:?}", statement),
-        };
-
-        let boolean = match &exp.expression {
-            Expression::Boolean(i) => i,
-            _ => panic!("expression not a Expression::Boolean. got={:?}", exp),
-        };
+        let exp = match_or_fail!(&program.statements[0], Statement::Expression(e) => e);
+        let boolean = match_or_fail!(&exp.expression, Expression::Boolean(i) => i);
 
         assert!(boolean.value);
         assert_eq!(boolean.token_literal(), "true");
@@ -784,16 +758,8 @@ mod tests {
 
         assert_eq!(program.statements.len(), 1);
 
-        let statement = &program.statements[0];
-        let exp = match statement {
-            Statement::Expression(e) => e,
-            _ => panic!("statement not a Statement::Expression. got={:?}", statement),
-        };
-
-        let ident = match &exp.expression {
-            Expression::Identifier(i) => i,
-            _ => panic!("expression not a Expression::Identifier. got={:?}", exp),
-        };
+        let exp = match_or_fail!(&program.statements[0], Statement::Expression(e) => e);
+        let ident = match_or_fail!(&exp.expression, Expression::Identifier(i) => i);
 
         assert_eq!(ident.value, "foobar");
         assert_eq!(ident.token_literal(), "foobar");
@@ -805,16 +771,8 @@ mod tests {
 
         let program = parse_program(input);
 
-        let statement = &program.statements[0];
-        let exp = match statement {
-            Statement::Expression(e) => e,
-            _ => panic!("statement not a Statement::Expression. got={:?}", statement),
-        };
-
-        let string_literal = match &exp.expression {
-            Expression::StringLiteral(i) => i,
-            _ => panic!("expression not a Expression::StringLiteral. got={:?}", exp),
-        };
+        let exp = match_or_fail!(&program.statements[0], Statement::Expression(e) => e);
+        let string_literal = match_or_fail!(&exp.expression, Expression::StringLiteral(i) => i);
 
         assert_eq!(string_literal.value, "hello world");
         assert_eq!(string_literal.token_literal(), "hello world");
@@ -851,16 +809,8 @@ mod tests {
 
         assert_eq!(program.statements.len(), 1);
 
-        let statement = &program.statements[0];
-        let exp = match statement {
-            Statement::Expression(e) => e,
-            _ => panic!("statement not a Statement::Expression. got={:?}", statement),
-        };
-
-        let array = match &exp.expression {
-            Expression::ArrayLiteral(i) => i,
-            _ => panic!("expression not a Expression::ArrayLiteral. got={:?}", exp),
-        };
+        let exp = match_or_fail!(&program.statements[0], Statement::Expression(e) => e);
+        let array = match_or_fail!(&exp.expression, Expression::ArrayLiteral(i) => i);
 
         assert_eq!(array.elements.len(), 3);
 
@@ -887,16 +837,8 @@ mod tests {
 
         assert_eq!(program.statements.len(), 1);
 
-        let statement = &program.statements[0];
-        let exp = match statement {
-            Statement::Expression(e) => e,
-            _ => panic!("statement not a Statement::Expression. got={:?}", statement),
-        };
-
-        let hash = match &exp.expression {
-            Expression::HashLiteral(i) => i,
-            _ => panic!("expression not a Expression::HashLiteral. got={:?}", exp),
-        };
+        let exp = match_or_fail!(&program.statements[0], Statement::Expression(e) => e);
+        let hash = match_or_fail!(&exp.expression, Expression::HashLiteral(i) => i);
 
         assert_eq!(hash.pairs.len(), 3);
 
@@ -925,20 +867,14 @@ mod tests {
 
         assert_eq!(program.statements.len(), 1);
 
-        let statement = &program.statements[0];
-        let exp = match statement {
-            Statement::Expression(e) => e,
-            _ => panic!("statement not a Statement::Expression. got={:?}", statement),
-        };
-
-        let hash = match &exp.expression {
-            Expression::HashLiteral(i) => i,
-            _ => panic!("expression not a Expression::HashLiteral. got={:?}", exp),
-        };
+        let exp = match_or_fail!(&program.statements[0], Statement::Expression(e) => e);
+        let hash = match_or_fail!(&exp.expression, Expression::HashLiteral(i) => i);
 
         assert_eq!(hash.pairs.len(), 3);
 
-        let expected: [(&str, Box<dyn Fn(&Expression)>); 3] = [
+        type TestClosure = Box<dyn Fn(&Expression)>;
+
+        let expected: [(&str, TestClosure); 3] = [
             (
                 "one",
                 Box::new(|e| {
@@ -980,16 +916,8 @@ mod tests {
 
         assert_eq!(program.statements.len(), 1);
 
-        let statement = &program.statements[0];
-        let exp = match statement {
-            Statement::Expression(e) => e,
-            _ => panic!("statement not a Statement::Expression. got={:?}", statement),
-        };
-
-        let hash = match &exp.expression {
-            Expression::HashLiteral(i) => i,
-            _ => panic!("expression not a Expression::HashLiteral. got={:?}", exp),
-        };
+        let exp = match_or_fail!(&program.statements[0], Statement::Expression(e) => e);
+        let hash = match_or_fail!(&exp.expression, Expression::HashLiteral(i) => i);
 
         assert!(hash.pairs.is_empty());
     }
@@ -1031,11 +959,7 @@ mod tests {
 
             assert_eq!(program.statements.len(), 1);
 
-            let statement = &program.statements[0];
-            let exp = match statement {
-                Statement::Expression(e) => e,
-                _ => panic!("statement not a Statement::Expression. got={:?}", statement),
-            };
+            let exp = match_or_fail!(&program.statements[0], Statement::Expression(e) => e);
 
             test_infix_expression(&exp.expression, left_value, operator, right_value);
         }
@@ -1113,19 +1037,8 @@ mod tests {
 
             assert_eq!(program.statements.len(), 1);
 
-            let statement = &program.statements[0];
-            let exp = match statement {
-                Statement::Expression(e) => e,
-                _ => panic!("statement not a Statement::Expression. got={:?}", statement),
-            };
-
-            let exp = match &exp.expression {
-                Expression::Prefix(e) => e,
-                _ => panic!(
-                    "expression not a Expression::PrefixExpression. got={:?}",
-                    exp
-                ),
-            };
+            let exp = match_or_fail!(&program.statements[0], Statement::Expression(e) => e);
+            let exp = match_or_fail!(&exp.expression, Expression::Prefix(i) => i);
 
             assert_eq!(exp.operator, operator);
             test_literal_expression(&exp.right, value);
@@ -1140,19 +1053,8 @@ mod tests {
 
         assert_eq!(program.statements.len(), 1);
 
-        let statement = &program.statements[0];
-        let exp = match statement {
-            Statement::Expression(e) => e,
-            _ => panic!("statement not a Statement::Expression. got={:?}", statement),
-        };
-
-        let exp = match &exp.expression {
-            Expression::FunctionLiteral(e) => e,
-            _ => panic!(
-                "expression not a Expression::FunctionLiteral. got={:?}",
-                exp
-            ),
-        };
+        let exp = match_or_fail!(&program.statements[0], Statement::Expression(e) => e);
+        let exp = match_or_fail!(&exp.expression, Expression::FunctionLiteral(i) => i);
 
         assert_eq!(exp.parameters.len(), 2);
         // TODO - omg! - moliva - 2024/03/06
@@ -1166,10 +1068,7 @@ mod tests {
         );
 
         assert_eq!(exp.body.statements.len(), 1);
-        let body_statement = match &exp.body.statements[0] {
-            Statement::Expression(e) => e,
-            _ => panic!("statement not a Statement::Expression. got={:?}", statement),
-        };
+        let body_statement = match_or_fail!(&exp.body.statements[0], Statement::Expression(e) => e);
 
         test_infix_expression(
             &body_statement.expression,
@@ -1187,16 +1086,8 @@ mod tests {
 
         assert_eq!(program.statements.len(), 1);
 
-        let statement = &program.statements[0];
-        let exp = match statement {
-            Statement::Expression(e) => e,
-            _ => panic!("statement not a Statement::Expression. got={:?}", statement),
-        };
-
-        let index_exp = match &exp.expression {
-            Expression::IndexOperator(e) => e,
-            _ => panic!("expression not a Expression::IndexOperator. got={:?}", exp),
-        };
+        let exp = match_or_fail!(&program.statements[0], Statement::Expression(e) => e);
+        let index_exp = match_or_fail!(&exp.expression, Expression::IndexOperator(i) => i);
 
         test_identifier(&index_exp.left, "myArray");
         test_infix_expression(
@@ -1220,19 +1111,8 @@ mod tests {
 
             assert_eq!(program.statements.len(), 1);
 
-            let statement = &program.statements[0];
-            let exp = match statement {
-                Statement::Expression(e) => e,
-                _ => panic!("statement not a Statement::Expression. got={:?}", statement),
-            };
-
-            let exp = match &exp.expression {
-                Expression::FunctionLiteral(e) => e,
-                _ => panic!(
-                    "expression not a Expression::FunctionLiteral. got={:?}",
-                    exp
-                ),
-            };
+            let exp = match_or_fail!(&program.statements[0], Statement::Expression(e) => e);
+            let exp = match_or_fail!(&exp.expression, Expression::FunctionLiteral(i) => i);
 
             assert_eq!(exp.parameters.len(), expected_params.len());
 
@@ -1253,16 +1133,8 @@ mod tests {
 
         assert_eq!(program.statements.len(), 1);
 
-        let statement = &program.statements[0];
-        let exp = match statement {
-            Statement::Expression(e) => e,
-            _ => panic!("statement not a Statement::Expression. got={:?}", statement),
-        };
-
-        let exp = match &exp.expression {
-            Expression::Call(e) => e,
-            _ => panic!("expression not a Expression::CallExpression. got={:?}", exp),
-        };
+        let exp = match_or_fail!(&program.statements[0], Statement::Expression(e) => e);
+        let exp = match_or_fail!(&exp.expression, Expression::Call(i) => i);
 
         test_identifier(&exp.function, "add");
 
@@ -1317,13 +1189,7 @@ mod tests {
     }
 
     fn test_infix_expression(exp: &Expression, left: LitVal, operator: &str, right: LitVal) {
-        let op_exp = match exp {
-            Expression::Infix(e) => e,
-            _ => panic!(
-                "expression not a Expression::InfixExpression. got={:?}",
-                exp
-            ),
-        };
+        let op_exp = match_or_fail!(exp, Expression::Infix(e) => e);
 
         test_literal_expression(&op_exp.left, left);
         assert_eq!(op_exp.operator, operator);
@@ -1331,30 +1197,21 @@ mod tests {
     }
 
     fn test_identifier(exp: &Expression, value: &str) {
-        let identifier = match exp {
-            Expression::Identifier(i) => i,
-            _ => panic!("expression not a Expression::Identifier. got={:?}", exp),
-        };
+        let identifier = match_or_fail!(exp, Expression::Identifier(e) => e);
 
         assert_eq!(identifier.value, value);
         assert_eq!(identifier.token_literal(), value);
     }
 
     fn test_integer_literal(exp: &Expression, value: i64) {
-        let integer_literal = match exp {
-            Expression::IntegerLiteral(i) => i,
-            _ => panic!("expression not a Expression::IntegerLiteral. got={:?}", exp),
-        };
+        let integer_literal = match_or_fail!(exp, Expression::IntegerLiteral(e) => e);
 
         assert_eq!(integer_literal.value, value);
         assert_eq!(integer_literal.token_literal(), format!("{value}"));
     }
 
     fn test_boolean_literal(exp: &Expression, value: bool) {
-        let boolean_literal = match exp {
-            Expression::Boolean(i) => i,
-            _ => panic!("expression not a Expression::Boolean. got={:?}", exp),
-        };
+        let boolean_literal = match_or_fail!(exp, Expression::Boolean(e) => e);
 
         assert_eq!(boolean_literal.value, value);
         assert_eq!(boolean_literal.token_literal(), format!("{value}"));
