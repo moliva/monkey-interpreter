@@ -58,9 +58,7 @@ impl Parser {
         while self.peek_token != Token::RBrace {
             self.next_token();
             let key = self.parse_expression(Precedence::Lowest);
-            if key.is_none() {
-                return None;
-            }
+            key.as_ref()?;
 
             if !self.expect_peek(Token::Colon) {
                 return None;
@@ -68,9 +66,7 @@ impl Parser {
 
             self.next_token();
             let value = self.parse_expression(Precedence::Lowest);
-            if value.is_none() {
-                return None;
-            }
+            value.as_ref()?;
 
             pairs.push((key.unwrap(), value.unwrap()));
 
@@ -1377,23 +1373,5 @@ mod tests {
             eprintln!("parser error: {err}");
         }
         panic!();
-    }
-
-    fn assert_let_statement(statement: Statement, name: &str) {
-        let statement_literal = statement.token_literal();
-        if statement_literal != "let" {
-            panic!(
-                "statement.token_literal() not 'let'. got={}",
-                statement_literal
-            );
-        }
-
-        let let_ = match statement {
-            Statement::Let(l) => l,
-            _ => panic!("statement not a Statement::Let. got={:?}", statement),
-        };
-
-        assert_eq!(let_.name.value, name);
-        assert_eq!(let_.name.token_literal(), name);
     }
 }
