@@ -3,7 +3,7 @@ use std::{cell::RefCell, collections::HashMap, rc::Rc};
 use crate::{
     ast::{BlockStatement, HashLiteral, Identifier, IfExpression, Node, Program, Statement},
     builtins::BUILTINS,
-    object::{Boolean, Environment, Function, Hash, Integer, Object, SharedEnvironment},
+    object::{Environment, Function, Hash, Object, SharedEnvironment},
 };
 
 pub(crate) fn eval(node: &Node, env: &SharedEnvironment) -> Object {
@@ -35,8 +35,8 @@ pub(crate) fn eval(node: &Node, env: &SharedEnvironment) -> Object {
         },
         Expression(e) => match e {
             crate::ast::Expression::Identifier(e) => eval_identifier(e, env),
-            crate::ast::Expression::IntegerLiteral(i) => Object::Integer(Integer(i.value)),
-            crate::ast::Expression::Boolean(i) => Object::Boolean(Boolean(i.value)),
+            crate::ast::Expression::IntegerLiteral(i) => Object::Integer(i.value),
+            crate::ast::Expression::Boolean(i) => Object::Boolean(i.value),
 
             crate::ast::Expression::Prefix(e) => {
                 let right = eval(&Node::Expression(*e.right.clone()), env);
@@ -134,7 +134,7 @@ fn eval_index_expression(left: Object, index: Object) -> Object {
     let left_type = left.r#type();
 
     if let Object::Array(left) = left {
-        if let Object::Integer(Integer(index)) = index {
+        if let Object::Integer(index) = index {
             return eval_array_index_expression(left, index);
         }
     } else if let Object::Hash(left) = left {
@@ -258,14 +258,14 @@ fn eval_if_expression(e: &IfExpression, env: &SharedEnvironment) -> Object {
 fn is_truthy(obj: &Object) -> bool {
     match obj {
         Object::Null => false,
-        Object::Boolean(Boolean(v)) => *v,
+        Object::Boolean(v) => *v,
         _ => true,
     }
 }
 
 fn eval_infix_expression(operator: &str, left: &Object, right: &Object) -> Object {
-    if let Object::Integer(Integer(left)) = left {
-        if let Object::Integer(Integer(right)) = right {
+    if let Object::Integer(left) = left {
+        if let Object::Integer(right) = right {
             return eval_integer_infix_expression(operator, left, right);
         }
     }
@@ -285,8 +285,8 @@ fn eval_infix_expression(operator: &str, left: &Object, right: &Object) -> Objec
     }
 
     match operator {
-        "==" => Object::Boolean(Boolean(left == right)),
-        "!=" => Object::Boolean(Boolean(left != right)),
+        "==" => Object::Boolean(left == right),
+        "!=" => Object::Boolean(left != right),
         _ => Object::Error(format!(
             "unknown operator: {} {operator} {}",
             left.r#type(),
@@ -305,14 +305,14 @@ fn eval_string_infix_expression(operator: &str, left: &str, right: &str) -> Obje
 
 fn eval_integer_infix_expression(operator: &str, left: &i64, right: &i64) -> Object {
     match operator {
-        "+" => Object::Integer(Integer(left + right)),
-        "-" => Object::Integer(Integer(left - right)),
-        "*" => Object::Integer(Integer(left * right)),
-        "/" => Object::Integer(Integer(left / right)),
-        "<" => Object::Boolean(Boolean(left < right)),
-        ">" => Object::Boolean(Boolean(left > right)),
-        "==" => Object::Boolean(Boolean(left == right)),
-        "!=" => Object::Boolean(Boolean(left != right)),
+        "+" => Object::Integer(left + right),
+        "-" => Object::Integer(left - right),
+        "*" => Object::Integer(left * right),
+        "/" => Object::Integer(left / right),
+        "<" => Object::Boolean(left < right),
+        ">" => Object::Boolean(left > right),
+        "==" => Object::Boolean(left == right),
+        "!=" => Object::Boolean(left != right),
         _ => Object::Error(format!("unkown operator: INTEGER {operator} INTEGER")),
     }
 }
@@ -326,8 +326,8 @@ fn eval_prefix_expression(operator: &str, right: &Object) -> Object {
 }
 
 fn eval_minus_prefix_operator_expression(right: &Object) -> Object {
-    if let Object::Integer(Integer(value)) = right {
-        Object::Integer(Integer(-value))
+    if let Object::Integer(value) = right {
+        Object::Integer(-value)
     } else {
         Object::Error(format!("unknown operator: -{}", right.r#type()))
     }
@@ -336,7 +336,7 @@ fn eval_minus_prefix_operator_expression(right: &Object) -> Object {
 fn eval_bang_operator_expression(right: &Object) -> Object {
     let val = is_truthy(right);
 
-    Object::Boolean(Boolean(!val))
+    Object::Boolean(!val)
 }
 
 fn eval_block_statement(block: &BlockStatement, env: &SharedEnvironment) -> Object {
@@ -509,9 +509,9 @@ let two = "two";
             (Object::String("one".to_owned()), 1),
             (Object::String("two".to_owned()), 2),
             (Object::String("three".to_owned()), 3),
-            (Object::Integer(Integer(4)), 4),
-            (Object::Boolean(Boolean(true)), 5),
-            (Object::Boolean(Boolean(false)), 6),
+            (Object::Integer(4), 4),
+            (Object::Boolean(true), 5),
+            (Object::Boolean(false), 6),
         ];
         let expected = HashMap::from(expected);
 
@@ -526,22 +526,19 @@ let two = "two";
     #[test]
     fn test_array_index_expressions() {
         let tests = [
-            ("[1, 2, 3][0]", Object::Integer(Integer(1))),
-            ("[1, 2, 3][1]", Object::Integer(Integer(2))),
-            ("[1, 2, 3][2]", Object::Integer(Integer(3))),
-            ("let i = 0; [1][i];", Object::Integer(Integer(1))),
-            ("[1, 2, 3][1 + 1];", Object::Integer(Integer(3))),
-            (
-                "let myArray = [1, 2, 3]; myArray[2];",
-                Object::Integer(Integer(3)),
-            ),
+            ("[1, 2, 3][0]", Object::Integer(1)),
+            ("[1, 2, 3][1]", Object::Integer(2)),
+            ("[1, 2, 3][2]", Object::Integer(3)),
+            ("let i = 0; [1][i];", Object::Integer(1)),
+            ("[1, 2, 3][1 + 1];", Object::Integer(3)),
+            ("let myArray = [1, 2, 3]; myArray[2];", Object::Integer(3)),
             (
                 "let myArray = [1, 2, 3]; myArray[0] + myArray[1] + myArray[2];",
-                Object::Integer(Integer(6)),
+                Object::Integer(6),
             ),
             (
                 "let myArray = [1, 2, 3]; let i = myArray[0]; myArray[i]",
-                Object::Integer(Integer(2)),
+                Object::Integer(2),
             ),
             ("[1, 2, 3][3]", Object::Null),
             ("[1, 2, 3][-1]", Object::Null),
@@ -557,16 +554,13 @@ let two = "two";
     #[test]
     fn test_hash_index_expressions() {
         let tests = [
-            (r#"{"foo": 5}["foo"]"#, Object::Integer(Integer(5))),
+            (r#"{"foo": 5}["foo"]"#, Object::Integer(5)),
             (r#"{"foo": 5}["bar"]"#, Object::Null),
-            (
-                r#"let key = "foo"; {"foo": 5}[key]"#,
-                Object::Integer(Integer(5)),
-            ),
+            (r#"let key = "foo"; {"foo": 5}[key]"#, Object::Integer(5)),
             (r#"{}["foo"]"#, Object::Null),
-            (r#"{5: 5}[5]"#, Object::Integer(Integer(5))),
-            (r#"{true: 5}[true]"#, Object::Integer(Integer(5))),
-            (r#"{false: 5}[false]"#, Object::Integer(Integer(5))),
+            (r#"{5: 5}[5]"#, Object::Integer(5)),
+            (r#"{true: 5}[true]"#, Object::Integer(5)),
+            (r#"{false: 5}[false]"#, Object::Integer(5)),
         ];
 
         for (input, expected) in tests {
@@ -622,9 +616,9 @@ addTwo(2);
     fn test_builtin_functions() {
         let tests = [
             // len
-            ("len(\"\")", Object::Integer(Integer(0))),
-            ("len(\"four\")", Object::Integer(Integer(4))),
-            ("len(\"hello world\")", Object::Integer(Integer(11))),
+            ("len(\"\")", Object::Integer(0)),
+            ("len(\"four\")", Object::Integer(4)),
+            ("len(\"hello world\")", Object::Integer(11)),
             (
                 "len(1)",
                 Object::Error("argument to `len` not supported, got INTEGER".to_owned()),
@@ -633,25 +627,19 @@ addTwo(2);
                 "len(\"one\", \"two\")",
                 Object::Error("wrong number of arguments. got=2, want=1".to_owned()),
             ),
-            ("len([1, 2, 3])", Object::Integer(Integer(3))),
+            ("len([1, 2, 3])", Object::Integer(3)),
             // first
-            ("first([1, 2, 3])", Object::Integer(Integer(1))),
+            ("first([1, 2, 3])", Object::Integer(1)),
             ("first([])", Object::Null),
             // last
-            ("last([1, 2, 3])", Object::Integer(Integer(3))),
+            ("last([1, 2, 3])", Object::Integer(3)),
             ("last([])", Object::Null),
             // rest
             ("rest([])", Object::Null),
-            (
-                "rest([2,3])",
-                Object::Array(vec![Object::Integer(Integer(3))]),
-            ),
+            ("rest([2,3])", Object::Array(vec![Object::Integer(3)])),
             (
                 "rest([1,2,3])",
-                Object::Array(vec![
-                    Object::Integer(Integer(2)),
-                    Object::Integer(Integer(3)),
-                ]),
+                Object::Array(vec![Object::Integer(2), Object::Integer(3)]),
             ),
             ("rest([3])", Object::Array(vec![])),
             // push
@@ -659,16 +647,10 @@ addTwo(2);
                 "push(1, 1)",
                 Object::Error("argument to `push` not supported, got INTEGER".to_owned()),
             ),
-            (
-                "push([], 1)",
-                Object::Array(vec![Object::Integer(Integer(1))]),
-            ),
+            ("push([], 1)", Object::Array(vec![Object::Integer(1)])),
             (
                 "push([1], 2)",
-                Object::Array(vec![
-                    Object::Integer(Integer(1)),
-                    Object::Integer(Integer(2)),
-                ]),
+                Object::Array(vec![Object::Integer(1), Object::Integer(2)]),
             ),
         ];
 
@@ -703,29 +685,20 @@ map(a, double);
         let evaluated = test_eval(input);
         assert_eq!(
             evaluated,
-            Object::Array(vec![
-                Object::Integer(Integer(2)),
-                Object::Integer(Integer(4))
-            ])
+            Object::Array(vec![Object::Integer(2), Object::Integer(4)])
         );
     }
 
     #[test]
     fn test_if_else_expressions() {
         let tests = [
-            ("if (true) { 10 }", Object::Integer(Integer(10))),
+            ("if (true) { 10 }", Object::Integer(10)),
             ("if (false) { 10 }", Object::Null),
-            ("if (1) { 10 }", Object::Integer(Integer(10))),
-            ("if (1 < 2) { 10 }", Object::Integer(Integer(10))),
+            ("if (1) { 10 }", Object::Integer(10)),
+            ("if (1 < 2) { 10 }", Object::Integer(10)),
             ("if (1 > 2) { 10 }", Object::Null),
-            (
-                "if (1 > 2) { 10 } else { 20 }",
-                Object::Integer(Integer(20)),
-            ),
-            (
-                "if (1 < 2) { 10 } else { 20 }",
-                Object::Integer(Integer(10)),
-            ),
+            ("if (1 > 2) { 10 } else { 20 }", Object::Integer(20)),
+            ("if (1 < 2) { 10 } else { 20 }", Object::Integer(10)),
         ];
 
         for (input, expected) in tests {
@@ -861,7 +834,7 @@ map(a, double);
             _ => panic!("object is not Boolean. got={:?}", evaluated),
         };
 
-        assert_eq!(result.0, expected);
+        assert_eq!(*result, expected);
     }
 
     fn test_integer_object(evaluated: &Object, expected: i64) {
@@ -870,6 +843,6 @@ map(a, double);
             _ => panic!("object is not Integer. got={:?}", evaluated),
         };
 
-        assert_eq!(result.0, expected);
+        assert_eq!(*result, expected);
     }
 }

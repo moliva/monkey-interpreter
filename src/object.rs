@@ -9,9 +9,9 @@ pub(crate) type BuiltinFunction = fn(Vec<Object>) -> Object;
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub(crate) enum Object {
     Null,
-    Integer(Integer),
+    Integer(i64),
+    Boolean(bool),
     String(String),
-    Boolean(Boolean),
     Array(Vec<Object>),
     Hash(Hash),
     Function(Function),
@@ -43,8 +43,8 @@ impl Object {
 
     pub fn inspect(&self) -> String {
         match self {
-            Object::Integer(Integer(value)) => value.to_string(),
-            Object::Boolean(Boolean(value)) => value.to_string(),
+            Object::Integer(value) => value.to_string(),
+            Object::Boolean(value) => value.to_string(),
             Object::Null => "null".to_owned(),
             Object::ReturnValue(v) => v.inspect(),
             Object::Error(message) => format!("ERROR: {message}"),
@@ -101,12 +101,6 @@ impl Environment {
         self.store.insert(name.to_owned(), val);
     }
 }
-
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub(crate) struct Integer(pub i64);
-
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub(crate) struct Boolean(pub bool);
 
 #[derive(Debug, Clone)]
 pub(crate) struct Hash(pub HashMap<Object, Object>);

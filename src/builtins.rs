@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 
-use crate::object::{BuiltinFunction, Integer, Object};
+use crate::object::{BuiltinFunction, Object};
 
 lazy_static! {
     pub(crate) static ref BUILTINS: HashMap<&'static str, BuiltinFunction> = {
@@ -26,8 +26,8 @@ fn len(mut args: Vec<Object>) -> Object {
         let arg = args.pop().unwrap();
 
         match arg {
-            Object::String(s) => Object::Integer(Integer(s.len() as i64)),
-            Object::Array(a) => Object::Integer(Integer(a.len() as i64)),
+            Object::String(s) => Object::Integer(s.len() as i64),
+            Object::Array(a) => Object::Integer(a.len() as i64),
             _ => Object::Error(format!(
                 "argument to `len` not supported, got {}",
                 arg.r#type()
