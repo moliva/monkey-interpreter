@@ -9,4 +9,4 @@ macro_rules! match_or_fail {
     };
 }
 
-pub(crate) use match_or_fail; // <-- the trick
+pub(crate) use match_or_fail;
