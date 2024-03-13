@@ -658,19 +658,8 @@ mod tests {
 
         assert_eq!(program.statements.len(), 1);
 
-        let statement = &program.statements[0];
-        let exp = match statement {
-            Statement::Expression(e) => e,
-            _ => panic!("statement not a Statement::Expression. got={:?}", statement),
-        };
-
-        let exp = match &exp.expression {
-            Expression::If(e) => e,
-            _ => panic!(
-                "expression not a Expression::IfExpression. got={:?}",
-                exp.expression
-            ),
-        };
+        let exp = match_or_fail!(&program.statements[0], Statement::Expression(e) => e);
+        let exp = match_or_fail!(&exp.expression, Expression::If(e) => e);
 
         test_infix_expression(
             &exp.condition,
@@ -680,11 +669,9 @@ mod tests {
         );
 
         assert_eq!(exp.consequence.statements.len(), 1);
-        let consequence = &exp.consequence.statements[0];
-        let consequence = match consequence {
-            Statement::Expression(e) => e,
-            _ => panic!("statement not a Statement::Expression. got={:?}", statement),
-        };
+
+        let consequence =
+            match_or_fail!(&exp.consequence.statements[0], Statement::Expression(e) => e);
 
         test_identifier(&consequence.expression, "x");
 
@@ -693,11 +680,7 @@ mod tests {
         let alternative = exp.alternative.as_ref().unwrap();
         assert_eq!(alternative.statements.len(), 1);
 
-        let alternative = &alternative.statements[0];
-        let alternative = match alternative {
-            Statement::Expression(e) => e,
-            _ => panic!("statement not a Statement::Expression. got={:?}", statement),
-        };
+        let alternative = match_or_fail!(&alternative.statements[0], Statement::Expression(e) => e);
         test_identifier(&alternative.expression, "y");
     }
 
@@ -719,12 +702,7 @@ mod tests {
 
             assert_eq!(program.statements.len(), 1);
 
-            let statement = &program.statements[0];
-
-            let exp = match statement {
-                Statement::Let(e) => e,
-                _ => panic!("expected Statement::Let, got {:?}", statement),
-            };
+            let exp = match_or_fail!(&program.statements[0], Statement::Let(e) => e);
 
             // TODO - ugly thing here - moliva - 2024/03/07
             test_identifier(
@@ -786,16 +764,8 @@ mod tests {
 
         assert_eq!(program.statements.len(), 1);
 
-        let statement = &program.statements[0];
-        let exp = match statement {
-            Statement::Expression(e) => e,
-            _ => panic!("statement not a Statement::Expression. got={:?}", statement),
-        };
-
-        let integer_literal = match &exp.expression {
-            Expression::IntegerLiteral(i) => i,
-            _ => panic!("expression not a Expression::IntegerLiteral. got={:?}", exp),
-        };
+        let exp = match_or_fail!(&program.statements[0], Statement::Expression(e) => e);
+        let integer_literal = match_or_fail!(&exp.expression, Expression::IntegerLiteral(e) => e);
 
         assert_eq!(integer_literal.value, 5);
         assert_eq!(integer_literal.token_literal(), "5");
@@ -845,10 +815,7 @@ mod tests {
         let expected = HashMap::from([("one", 1), ("two", 2), ("three", 3)]);
 
         for (key, value) in hash.pairs.iter() {
-            let string_literal = match key {
-                Expression::StringLiteral(i) => i,
-                _ => panic!("expression not a Expression::StringLiteral. got={:?}", exp),
-            };
+            let string_literal = match_or_fail!(key, Expression::StringLiteral(e) => e);
 
             let s: &str = &string_literal.string();
             let expected_value = expected.get(s);
@@ -897,10 +864,7 @@ mod tests {
         let expected = HashMap::from(expected);
 
         for (key, value) in hash.pairs.iter() {
-            let string_literal = match key {
-                Expression::StringLiteral(i) => i,
-                _ => panic!("expression not a Expression::StringLiteral. got={:?}", exp),
-            };
+            let string_literal = match_or_fail!(key, Expression::StringLiteral(e) => e);
 
             let s: &str = &string_literal.string();
             let f = expected.get(s).expect("test function");
