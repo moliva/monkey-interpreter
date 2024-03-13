@@ -588,20 +588,10 @@ mod tests {
     use crate::{
         ast::{Expression, Program, Statement},
         lexer::Lexer,
+        test_utils::match_or_fail,
     };
 
     use super::Parser;
-
-    /// Tries to match a given expression to a pattern and return the identifier given in the
-    /// pattern, failing otherwise.
-    macro_rules! match_or_fail {
-        ($expression:expr, $pattern:pat => $identifier:ident) => {
-            match $expression {
-                $pattern => $identifier,
-                _ => panic!("not expected type from expression {:?}", $expression),
-            }
-        };
-    }
 
     #[test]
     fn test_return_statements() {

@@ -8,4 +8,6 @@ pub mod lexer;
 pub mod object;
 pub mod parser;
 pub mod repl;
+#[cfg(test)]
+pub(crate) mod test_utils;
 pub mod token;

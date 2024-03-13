@@ -379,7 +379,7 @@ fn eval_program(program: &Program, env: &SharedEnvironment) -> Object {
 mod test {
     use std::{cell::RefCell, collections::HashMap};
 
-    use crate::{lexer::Lexer, parser::Parser};
+    use crate::{lexer::Lexer, parser::Parser, test_utils::match_or_fail};
 
     use super::*;
 
@@ -389,10 +389,7 @@ mod test {
 
         let evaluated = test_eval(input);
 
-        let result = match evaluated {
-            Object::String(s) => s,
-            _ => panic!("object is not String. got={:?}", evaluated),
-        };
+        let result = match_or_fail!(evaluated, Object::String(e) => e);
 
         assert_eq!(result, "Hello World!");
     }
@@ -471,10 +468,7 @@ mod test {
 
         let evaluated = test_eval(input);
 
-        let result = match evaluated {
-            Object::Array(f) => f,
-            _ => panic!("object is not Array. got={evaluated:?}"),
-        };
+        let result = match_or_fail!(evaluated, Object::Array(e) => e);
 
         assert_eq!(result.len(), 3);
 
@@ -499,21 +493,16 @@ let two = "two";
 
         let evaluated = test_eval(input);
 
-        let result = match evaluated {
-            Object::Hash(f) => f,
-            _ => panic!("object is not Hash. got={evaluated:?}"),
-        };
-        let Hash(pairs) = result;
+        let pairs = match_or_fail!(evaluated, Object::Hash(Hash(e)) => e);
 
-        let expected = [
+        let expected = HashMap::from([
             (Object::String("one".to_owned()), 1),
             (Object::String("two".to_owned()), 2),
             (Object::String("three".to_owned()), 3),
             (Object::Integer(4), 4),
             (Object::Boolean(true), 5),
             (Object::Boolean(false), 6),
-        ];
-        let expected = HashMap::from(expected);
+        ]);
 
         assert_eq!(pairs.len(), expected.len());
 
@@ -590,10 +579,7 @@ let two = "two";
 
         let evaluated = test_eval(input);
 
-        let s = match evaluated {
-            Object::String(f) => f,
-            _ => panic!("object is not String. got={evaluated:?}"),
-        };
+        let s = match_or_fail!(evaluated, Object::String(e) => e);
 
         assert_eq!(s, "Hello World!");
     }
@@ -787,10 +773,7 @@ map(a, double);
 
         let evaluated = test_eval(input);
 
-        let f = match evaluated {
-            Object::Function(f) => f,
-            _ => panic!("object is not Function. got={evaluated:?}"),
-        };
+        let f = match_or_fail!(evaluated, Object::Function(f) => f);
 
         assert_eq!(f.parameters.len(), 1);
         assert_eq!(f.parameters[0].string(), "x");
@@ -829,19 +812,13 @@ map(a, double);
     }
 
     fn test_boolean_object(evaluated: &Object, expected: bool) {
-        let result = match evaluated {
-            Object::Boolean(i) => i,
-            _ => panic!("object is not Boolean. got={:?}", evaluated),
-        };
+        let result = match_or_fail!(evaluated, Object::Boolean(e) => e);
 
         assert_eq!(*result, expected);
     }
 
     fn test_integer_object(evaluated: &Object, expected: i64) {
-        let result = match evaluated {
-            Object::Integer(i) => i,
-            _ => panic!("object is not Integer. got={:?}", evaluated),
-        };
+        let result = match_or_fail!(evaluated, Object::Integer(e) => e);
 
         assert_eq!(*result, expected);
     }
