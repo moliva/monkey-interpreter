@@ -109,7 +109,7 @@ impl Expression {
             Expression::StringLiteral(StringLiteral { token, .. }) => token.literal(),
             Expression::ArrayLiteral(ArrayLiteral { token, .. }) => token.literal(),
             Expression::IndexOperator(IndexOperator { token, .. }) => token.literal(),
-            Expression::HashLiteral(_) => todo!(),
+            Expression::HashLiteral(HashLiteral { token, .. }) => token.literal(),
         }
     }
 
@@ -126,7 +126,7 @@ impl Expression {
             Expression::StringLiteral(i) => i.string(),
             Expression::ArrayLiteral(i) => i.string(),
             Expression::IndexOperator(i) => i.string(),
-            Expression::HashLiteral(_) => todo!(),
+            Expression::HashLiteral(i) => i.string(),
         }
     }
 }
