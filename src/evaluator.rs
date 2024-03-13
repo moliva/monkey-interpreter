@@ -1,10 +1,20 @@
 use std::{cell::RefCell, collections::HashMap, rc::Rc};
 
 use crate::{
-    ast::{BlockStatement, HashLiteral, Identifier, IfExpression, Node, Program, Statement},
+    ast::{self, BlockStatement, HashLiteral, Identifier, IfExpression, Node, Program, Statement},
     builtins::BUILTINS,
     object::{Environment, Function, Hash, Object, SharedEnvironment},
 };
+
+macro_rules! eval_and_return_if_error {
+    ($e:expr, $env:expr) => {{
+        let result = crate::evaluator::eval($e, $env);
+        if result.is_error() {
+            return result;
+        }
+        result
+    }};
+}
 
 pub(crate) fn eval(node: &Node, env: &SharedEnvironment) -> Object {
     use Node::*;
@@ -12,53 +22,39 @@ pub(crate) fn eval(node: &Node, env: &SharedEnvironment) -> Object {
     match node {
         Program(p) => eval_program(p, env),
         Statement(s) => match s {
-            crate::ast::Statement::Let(e) => {
-                let val = eval(&Node::Expression(e.value.clone()), env);
-                if val.is_error() {
-                    return val;
-                }
+            ast::Statement::Let(e) => {
+                let val = eval_and_return_if_error!(&Node::Expression(e.value.clone()), env);
 
                 env.borrow_mut().set(&e.name.value, val.clone());
 
                 val
             }
-            crate::ast::Statement::Return(e) => {
-                let val = eval(&Node::Expression(e.return_value.clone()), env);
-                if val.is_error() {
-                    return val;
-                }
+            ast::Statement::Return(e) => {
+                let val = eval_and_return_if_error!(&Node::Expression(e.return_value.clone()), env);
 
                 Object::ReturnValue(Box::new(val))
             }
-            crate::ast::Statement::Expression(e) => eval(&Expression(e.expression.clone()), env),
-            crate::ast::Statement::Block(e) => eval_block_statement(e, env),
+            ast::Statement::Expression(e) => eval(&Expression(e.expression.clone()), env),
+            ast::Statement::Block(e) => eval_block_statement(e, env),
         },
         Expression(e) => match e {
-            crate::ast::Expression::Identifier(e) => eval_identifier(e, env),
-            crate::ast::Expression::IntegerLiteral(i) => Object::Integer(i.value),
-            crate::ast::Expression::Boolean(i) => Object::Boolean(i.value),
+            ast::Expression::Identifier(e) => eval_identifier(e, env),
+            ast::Expression::IntegerLiteral(i) => Object::Integer(i.value),
+            ast::Expression::Boolean(i) => Object::Boolean(i.value),
 
-            crate::ast::Expression::Prefix(e) => {
-                let right = eval(&Node::Expression(*e.right.clone()), env);
+            ast::Expression::Prefix(e) => {
+                let right = eval_and_return_if_error!(&Node::Expression(*e.right.clone()), env);
 
-                if right.is_error() {
-                    return right;
-                }
                 eval_prefix_expression(&e.operator, &right)
             }
-            crate::ast::Expression::Infix(e) => {
-                let left = eval(&Node::Expression(*e.left.clone()), env);
-                if left.is_error() {
-                    return left;
-                }
-                let right = eval(&Node::Expression(*e.right.clone()), env);
-                if right.is_error() {
-                    return right;
-                }
+            ast::Expression::Infix(e) => {
+                let left = eval_and_return_if_error!(&Node::Expression(*e.left.clone()), env);
+                let right = eval_and_return_if_error!(&Node::Expression(*e.right.clone()), env);
+
                 eval_infix_expression(&e.operator, &left, &right)
             }
-            crate::ast::Expression::If(e) => eval_if_expression(e, env),
-            crate::ast::Expression::FunctionLiteral(f) => {
+            ast::Expression::If(e) => eval_if_expression(e, env),
+            ast::Expression::FunctionLiteral(f) => {
                 let parameters = f.parameters.clone();
                 let body = f.body.clone();
                 let env = Rc::clone(env);
@@ -69,11 +65,9 @@ pub(crate) fn eval(node: &Node, env: &SharedEnvironment) -> Object {
                     env,
                 })
             }
-            crate::ast::Expression::Call(e) => {
-                let function = eval(&Node::Expression(*e.function.clone()), env);
-                if function.is_error() {
-                    return function;
-                }
+            ast::Expression::Call(e) => {
+                let function =
+                    eval_and_return_if_error!(&Node::Expression(*e.function.clone()), env);
 
                 let args = eval_expressions(&e.arguments, env);
                 if args.len() == 1 && args[0].is_error() {
@@ -82,8 +76,8 @@ pub(crate) fn eval(node: &Node, env: &SharedEnvironment) -> Object {
 
                 apply_function(function, args)
             }
-            crate::ast::Expression::StringLiteral(e) => Object::String(e.value.clone()),
-            crate::ast::Expression::ArrayLiteral(e) => {
+            ast::Expression::StringLiteral(e) => Object::String(e.value.clone()),
+            ast::Expression::ArrayLiteral(e) => {
                 let elements = eval_expressions(&e.elements, env);
 
                 if elements.len() == 1 && elements[0].is_error() {
@@ -92,20 +86,13 @@ pub(crate) fn eval(node: &Node, env: &SharedEnvironment) -> Object {
 
                 Object::Array(elements)
             }
-            crate::ast::Expression::IndexOperator(e) => {
-                let left = eval(&Node::Expression(*e.left.clone()), env);
-                if left.is_error() {
-                    return left;
-                }
-
-                let index = eval(&Node::Expression(*e.index.clone()), env);
-                if index.is_error() {
-                    return index;
-                }
+            ast::Expression::IndexOperator(e) => {
+                let left = eval_and_return_if_error!(&Node::Expression(*e.left.clone()), env);
+                let index = eval_and_return_if_error!(&Node::Expression(*e.index.clone()), env);
 
                 eval_index_expression(left, index)
             }
-            crate::ast::Expression::HashLiteral(node) => eval_hash_literal(node, env),
+            ast::Expression::HashLiteral(node) => eval_hash_literal(node, env),
         },
     }
 }
@@ -114,15 +101,9 @@ fn eval_hash_literal(hash: &HashLiteral, env: &SharedEnvironment) -> Object {
     let mut pairs = HashMap::default();
 
     for (key_node, value_node) in hash.pairs.iter() {
-        let key = eval(&Node::Expression(key_node.clone()), env);
-        if key.is_error() {
-            return key;
-        }
+        let key = eval_and_return_if_error!(&Node::Expression(key_node.clone()), env);
 
-        let value = eval(&Node::Expression(value_node.clone()), env);
-        if value.is_error() {
-            return value;
-        }
+        let value = eval_and_return_if_error!(&Node::Expression(value_node.clone()), env);
 
         pairs.insert(key, value);
     }
@@ -208,7 +189,7 @@ fn extend_function_env(
 }
 
 fn eval_expressions(
-    expressions: &Vec<crate::ast::Expression>,
+    expressions: &Vec<ast::Expression>,
     env: &SharedEnvironment,
 ) -> Vec<Object> {
     let mut result = Vec::default();
@@ -238,10 +219,7 @@ fn eval_identifier(identifier: &crate::ast::Identifier, env: &SharedEnvironment)
 }
 
 fn eval_if_expression(e: &IfExpression, env: &SharedEnvironment) -> Object {
-    let condition = eval(&Node::Expression(*e.condition.clone()), env);
-    if condition.is_error() {
-        return condition;
-    }
+    let condition = eval_and_return_if_error!(&Node::Expression(*e.condition.clone()), env);
 
     if is_truthy(&condition) {
         eval(
