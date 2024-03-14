@@ -49,7 +49,7 @@ impl Statement {
             r @ Return(rs) => {
                 format!("{} {};", r.token_literal(), rs.return_value.string())
             }
-            Expression(es) => es.expression.string(),
+            Expression(es) => format!("{};", es.expression.string()),
             Block(bs) => bs.string(),
         }
     }
@@ -63,7 +63,10 @@ pub(crate) struct BlockStatement {
 
 impl BlockStatement {
     pub fn string(&self) -> String {
-        self.statements.iter().map(|s| s.string()).join("")
+        format!(
+            "{{{}}}",
+            self.statements.iter().map(|s| s.string()).join("\n")
+        )
     }
 }
 
