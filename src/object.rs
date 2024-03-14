@@ -2,7 +2,7 @@ use std::{cell::RefCell, collections::HashMap, rc::Rc};
 
 use itertools::Itertools;
 
-use crate::ast::{BlockStatement, Identifier};
+use crate::ast::{BlockStatement, Identifier, Node};
 
 pub(crate) type BuiltinFunction = fn(Vec<Object>) -> Object;
 
@@ -18,6 +18,7 @@ pub(crate) enum Object {
     BuiltinFunction(BuiltinFunction),
     ReturnValue(Box<Object>),
     Error(String),
+    Quote(Quote),
 }
 
 impl Object {
@@ -37,6 +38,7 @@ impl Object {
             Object::BuiltinFunction(_) => "BUILTIN",
             Object::Array(_) => "ARRAY",
             Object::Hash(_) => "HASH",
+            Object::Quote(_) => "QUOTE",
         }
         .to_owned()
     }
@@ -70,6 +72,7 @@ impl Object {
 
                 format!("{{{pairs}}}")
             }
+            Object::Quote(Quote(node)) => format!("QUOTE({})", node.string()),
         }
     }
 }
@@ -143,3 +146,20 @@ impl std::hash::Hash for Function {
 }
 
 impl Eq for Function {}
+
+#[derive(Debug, Clone)]
+pub(crate) struct Quote(pub Node);
+
+impl PartialEq for Quote {
+    fn eq(&self, other: &Self) -> bool {
+        std::ptr::eq(&self.0, &other.0)
+    }
+}
+
+impl std::hash::Hash for Quote {
+    fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
+        std::ptr::hash(&self.0, state);
+    }
+}
+
+impl Eq for Quote {}

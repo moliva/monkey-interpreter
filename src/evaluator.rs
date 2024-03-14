@@ -4,6 +4,7 @@ use crate::{
     ast::{self, BlockStatement, HashLiteral, Identifier, IfExpression, Node, Program, Statement},
     builtins::BUILTINS,
     object::{Environment, Function, Hash, Object, SharedEnvironment},
+    quote_unquote::quote,
 };
 
 macro_rules! eval_and_return_if_error {
@@ -68,6 +69,12 @@ pub(crate) fn eval(node: &Node, env: &SharedEnvironment) -> Object {
                 })
             }
             ast::Expression::Call(e) => {
+                // special case for the `quote` macro call that requires the ast prior to its
+                // evaluation
+                if &*e.function.token_literal() == "quote" {
+                    return quote(Node::Expression(e.arguments[0].clone()));
+                }
+
                 let function =
                     eval_and_return_if_error!(&Node::Expression(*e.function.clone()), env);
 
@@ -356,7 +363,7 @@ fn eval_program(program: &Program, env: &SharedEnvironment) -> Object {
 mod test {
     use std::{cell::RefCell, collections::HashMap};
 
-    use crate::{lexer::Lexer, parser::Parser, test_utils::match_or_fail};
+    use crate::{lexer::Lexer, object::Quote, parser::Parser, test_utils::match_or_fail};
 
     use super::*;
 
@@ -559,6 +566,24 @@ let two = "two";
         let s = match_or_fail!(evaluated, Object::String(e) => e);
 
         assert_eq!(s, "Hello World!");
+    }
+
+    #[test]
+    fn test_quote() {
+        let tests = [
+            ("quote(5)", "5"),
+            ("quote(5 + 8)", "(5 + 8)"),
+            ("quote(foobar)", "foobar"),
+            ("quote(foobar + barfoo)", "(foobar + barfoo)"),
+        ];
+
+        for (input, expected) in tests {
+            let evaluated = test_eval(input);
+
+            let Quote(node) = match_or_fail!(evaluated, Object::Quote(q) => q);
+
+            assert_eq!(node.string(), expected);
+        }
     }
 
     #[test]

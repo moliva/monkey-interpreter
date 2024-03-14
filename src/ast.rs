@@ -9,6 +9,16 @@ pub(crate) enum Node {
     Expression(Expression),
 }
 
+impl Node {
+    pub fn string(&self) -> String {
+        match self {
+            Node::Program(p) => p.string(),
+            Node::Statement(s) => s.string(),
+            Node::Expression(e) => e.string(),
+        }
+    }
+}
+
 #[derive(Debug, Clone)]
 pub(crate) struct Let {
     pub token: Token,
@@ -99,7 +109,7 @@ pub(crate) enum Expression {
 }
 
 impl Expression {
-    fn token_literal(&self) -> String {
+    pub fn token_literal(&self) -> String {
         match self {
             Expression::Identifier(Identifier { token, .. }) => token.literal(),
             Expression::IntegerLiteral(IntegerLiteral { token, .. }) => token.literal(),

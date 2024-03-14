@@ -7,6 +7,7 @@ pub mod evaluator;
 pub mod lexer;
 pub mod object;
 pub mod parser;
+pub mod quote_unquote;
 pub mod repl;
 #[cfg(test)]
 pub(crate) mod test_utils;
