@@ -21,7 +21,7 @@ pub(crate) enum Object {
 }
 
 impl Object {
-    pub fn is_error(&self) -> bool {
+    pub const fn is_error(&self) -> bool {
         matches!(self, Self::Error(_))
     }
 

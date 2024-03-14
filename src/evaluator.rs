@@ -9,9 +9,11 @@ use crate::{
 macro_rules! eval_and_return_if_error {
     ($e:expr, $env:expr) => {{
         let result = crate::evaluator::eval($e, $env);
+
         if result.is_error() {
             return result;
         }
+
         result
     }};
 }
@@ -188,10 +190,7 @@ fn extend_function_env(
     env
 }
 
-fn eval_expressions(
-    expressions: &Vec<ast::Expression>,
-    env: &SharedEnvironment,
-) -> Vec<Object> {
+fn eval_expressions(expressions: &Vec<ast::Expression>, env: &SharedEnvironment) -> Vec<Object> {
     let mut result = Vec::default();
 
     for expression in expressions {
@@ -341,13 +340,13 @@ fn eval_program(program: &Program, env: &SharedEnvironment) -> Object {
     let mut result = None;
 
     for statement in statements {
-        result = Some(eval(&Node::Statement(statement.clone()), env));
+        let evaluated = eval_and_return_if_error!(&Node::Statement(statement.clone()), env);
 
-        if let Some(Object::ReturnValue(val)) = &result {
-            return *val.clone();
-        } else if let Some(r @ Object::Error(_)) = &result {
-            return r.clone();
+        if let Object::ReturnValue(val) = evaluated {
+            return *val;
         }
+
+        result = Some(evaluated);
     }
 
     result.unwrap()
@@ -755,7 +754,7 @@ map(a, double);
 
         assert_eq!(f.parameters.len(), 1);
         assert_eq!(f.parameters[0].string(), "x");
-        assert_eq!(f.body.string(), "(x + 2)");
+        assert_eq!(f.body.string(), "{(x + 2);}");
     }
 
     #[test]
