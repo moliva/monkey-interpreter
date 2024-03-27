@@ -109,6 +109,10 @@ pub(crate) enum Expression {
 }
 
 impl Expression {
+    pub fn to_node(self) -> Node {
+        Node::Expression(self)
+    }
+
     pub fn token_literal(&self) -> String {
         match self {
             Expression::Identifier(Identifier { token, .. }) => token.literal(),

@@ -248,13 +248,14 @@ mod test {
                 n => return n,
             };
 
+            assert_eq!(integer.value, 1);
             integer.value = 2;
 
             Node::Expression(Expression::IntegerLiteral(integer))
         });
 
         let tests = [
-            (Node::Expression(one()), Node::Expression(two())),
+            (one().to_node(), Node::Expression(two())),
             (
                 Node::Program(Program {
                     statements: vec![Statement::Expression(ExpressionStatement {
@@ -274,7 +275,7 @@ mod test {
                     token: Token::Lt,
                     left: Box::new(one()),
                     operator: "+".to_owned(),
-                    right: Box::new(two()),
+                    right: Box::new(one()),
                 })),
                 Node::Expression(Expression::Infix(InfixExpression {
                     token: Token::Lt,
@@ -408,14 +409,16 @@ mod test {
                 })),
             ),
             (
-                Node::Expression(Expression::HashLiteral(HashLiteral {
+                Expression::HashLiteral(HashLiteral {
                     token: Token::Lt,
                     pairs: vec![(one(), one()), (one(), one())],
-                })),
-                Node::Expression(Expression::HashLiteral(HashLiteral {
+                })
+                .to_node(),
+                Expression::HashLiteral(HashLiteral {
                     token: Token::Lt,
                     pairs: vec![(two(), two()), (two(), two())],
-                })),
+                })
+                .to_node(),
             ),
         ];
 
