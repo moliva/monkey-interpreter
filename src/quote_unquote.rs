@@ -1,5 +1,5 @@
 use crate::{
-    ast::{Expression, IntegerLiteral, Node},
+    ast::{Boolean, Expression, IntegerLiteral, Node},
     evaluator::eval,
     modify::{modify, ModifierFn},
     object::{Object, Quote, SharedEnvironment},
@@ -36,11 +36,17 @@ fn eval_unquote_calls(node: Node, env: &SharedEnvironment) -> Node {
 }
 
 fn convert_object_to_ast_node(object: Object) -> Node {
+    // TODO - complete the missing object variants - moliva - 2024/03/27
     Node::Expression(match object {
         Object::Integer(value) => Expression::IntegerLiteral(IntegerLiteral {
             token: Token::Int(value.to_string()),
             value,
         }),
+        Object::Boolean(value) => Expression::Boolean(Boolean {
+            token: Token::Ident(value.to_string()),
+            value,
+        }),
+        Object::Quote(Quote(n)) => return n,
         _ => todo!(),
     })
 }
@@ -85,6 +91,14 @@ mod test {
                 r#"let foobar = 8;
              quote(unquote(foobar))"#,
                 "8",
+            ),
+            ("quote(unquote(true))", "true"),
+            ("quote(unquote(false))", "false"),
+            ("quote(unquote(quote(4 + 4)))", "(4 + 4)"),
+            (
+                r#"let quotedInfixExpression = quote(4 + 4);
+             quote(unquote(4 + 4) + unquote(quotedInfixExpression))"#,
+                "(8 + (4 + 4))",
             ),
         ];
 
