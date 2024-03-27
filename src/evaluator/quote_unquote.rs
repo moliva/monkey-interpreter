@@ -8,31 +8,23 @@ use crate::{
 
 pub(crate) fn quote(node: Node, env: &SharedEnvironment) -> Object {
     let node = eval_unquote_calls(node, env);
+
     Object::Quote(Quote(node))
 }
 
 fn eval_unquote_calls(node: Node, env: &SharedEnvironment) -> Node {
-    let env: &'static SharedEnvironment = Box::leak(Box::new(env.clone()));
-
     let modifier: ModifierFn = Box::new(|n| match n {
         Node::Expression(Expression::Call(mut call))
             if call.function.token_literal() == "unquote" && call.arguments.len() == 1 =>
         {
             let evaluated = eval(&Node::Expression(call.arguments.pop().unwrap()), env);
+
             convert_object_to_ast_node(evaluated)
         }
         n => n,
     });
 
-    let node = modify(node, &modifier);
-
-    // TODO - drop leaked box env - moliva - 2024/03/27
-    // SAFETY:
-    // unsafe {
-    //     drop(Box::from_raw(env));
-    // };
-
-    node
+    modify(node, &modifier)
 }
 
 fn convert_object_to_ast_node(object: Object) -> Node {

@@ -4,7 +4,7 @@ use crate::ast::ast::{
     Statement,
 };
 
-pub(crate) type ModifierFn = Box<dyn Fn(Node) -> Node>;
+pub(crate) type ModifierFn<'a> = Box<dyn Fn(Node) -> Node + 'a>;
 
 // TODO - check the error handling in code example - moliva - 2024/03/27
 
