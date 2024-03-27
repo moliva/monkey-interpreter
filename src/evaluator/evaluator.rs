@@ -1,15 +1,17 @@
 use std::{cell::RefCell, collections::HashMap, rc::Rc};
 
 use crate::{
-    ast::{self, BlockStatement, HashLiteral, Identifier, IfExpression, Node, Program, Statement},
+    ast::ast::{
+        self, BlockStatement, HashLiteral, Identifier, IfExpression, Node, Program, Statement,
+    },
     builtins::BUILTINS,
+    evaluator::quote_unquote::quote,
     object::{Environment, Function, Hash, Object, SharedEnvironment},
-    quote_unquote::quote,
 };
 
 macro_rules! eval_and_return_if_error {
     ($e:expr, $env:expr) => {{
-        let result = crate::evaluator::eval($e, $env);
+        let result = crate::evaluator::evaluator::eval($e, $env);
 
         if result.is_error() {
             return result;
@@ -212,7 +214,7 @@ fn eval_expressions(expressions: &Vec<ast::Expression>, env: &SharedEnvironment)
     result
 }
 
-fn eval_identifier(identifier: &crate::ast::Identifier, env: &SharedEnvironment) -> Object {
+fn eval_identifier(identifier: &crate::ast::ast::Identifier, env: &SharedEnvironment) -> Object {
     let identifier: &str = &identifier.value;
     let env = env.borrow();
     let val = env.get(identifier);
@@ -363,7 +365,12 @@ fn eval_program(program: &Program, env: &SharedEnvironment) -> Object {
 mod test {
     use std::{cell::RefCell, collections::HashMap};
 
-    use crate::{lexer::Lexer, object::Quote, parser::Parser, test_utils::{match_or_fail, test_eval}};
+    use crate::{
+        lexer::Lexer,
+        object::Quote,
+        parser::Parser,
+        test_utils::{match_or_fail, test_eval},
+    };
 
     use super::*;
 

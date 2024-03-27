@@ -11,14 +11,14 @@ macro_rules! match_or_fail {
 
 pub(crate) use match_or_fail;
 
-use std::{cell::RefCell, rc::Rc};
 use crate::{
-    ast::Node,
-    evaluator::eval,
+    ast::ast::Node,
+    evaluator::evaluator::eval,
     lexer::Lexer,
     object::{Environment, Object},
     parser::Parser,
 };
+use std::{cell::RefCell, rc::Rc};
 
 pub fn test_eval(input: &str) -> Object {
     let lexer = Lexer::new(input);

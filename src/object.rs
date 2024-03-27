@@ -2,7 +2,7 @@ use std::{cell::RefCell, collections::HashMap, rc::Rc};
 
 use itertools::Itertools;
 
-use crate::ast::{BlockStatement, Identifier, Node};
+use crate::ast::ast::{BlockStatement, Identifier, Node};
 
 pub(crate) type BuiltinFunction = fn(Vec<Object>) -> Object;
 

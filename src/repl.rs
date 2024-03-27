@@ -6,7 +6,9 @@ use std::{
     rc::Rc,
 };
 
-use crate::{ast::Node, evaluator::eval, lexer::Lexer, object::Environment, parser::Parser};
+use crate::{
+    ast::ast::Node, evaluator::evaluator::eval, lexer::Lexer, object::Environment, parser::Parser,
+};
 
 const PROMPT: &str = ">> ";
 

@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 use std::mem::Discriminant;
 
-use crate::{ast::*, lexer::Lexer, token::Token};
+use crate::{ast::ast::*, lexer::Lexer, token::Token};
 
 #[derive(PartialEq, PartialOrd)]
 enum Precedence {
@@ -586,7 +586,7 @@ mod tests {
     use std::collections::HashMap;
 
     use crate::{
-        ast::{Expression, Program, Statement},
+        ast::ast::{Expression, Program, Statement},
         lexer::Lexer,
         test_utils::match_or_fail,
     };

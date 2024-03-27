@@ -1,4 +1,4 @@
-use crate::ast::{
+use crate::ast::ast::{
     ArrayLiteral, BlockStatement, Expression, ExpressionStatement, FunctionLiteral, HashLiteral,
     IfExpression, IndexOperator, InfixExpression, Let, Node, PrefixExpression, Program, Return,
     Statement,
@@ -189,7 +189,7 @@ pub(crate) fn modify(node: Node, modifier: &ModifierFn) -> Node {
 #[cfg(test)]
 mod test {
     use crate::{
-        ast::{
+        ast::ast::{
             ArrayLiteral, BlockStatement, Expression, ExpressionStatement, FunctionLiteral,
             HashLiteral, Identifier, IfExpression, IndexOperator, InfixExpression, IntegerLiteral,
             Let, Node, PrefixExpression, Program, Return, Statement,

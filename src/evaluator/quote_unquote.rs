@@ -1,7 +1,7 @@
 use crate::{
-    ast::{Boolean, Expression, IntegerLiteral, Node},
-    evaluator::eval,
-    modify::{modify, ModifierFn},
+    ast::ast::{Boolean, Expression, IntegerLiteral, Node},
+    ast::modify::{modify, ModifierFn},
+    evaluator::evaluator::eval,
     object::{Object, Quote, SharedEnvironment},
     token::Token,
 };
