@@ -1,10 +1,48 @@
 use crate::{
-    ast::Node,
-    object::{Object, Quote},
+    ast::{Expression, IntegerLiteral, Node},
+    evaluator::eval,
+    modify::{modify, ModifierFn},
+    object::{Object, Quote, SharedEnvironment},
+    token::Token,
 };
 
-pub(crate) fn quote(node: Node) -> Object {
+pub(crate) fn quote(node: Node, env: &SharedEnvironment) -> Object {
+    let node = eval_unquote_calls(node, env);
     Object::Quote(Quote(node))
+}
+
+fn eval_unquote_calls(node: Node, env: &SharedEnvironment) -> Node {
+    let env: &'static SharedEnvironment = Box::leak(Box::new(env.clone()));
+
+    let modifier: ModifierFn = Box::new(|n| match n {
+        Node::Expression(Expression::Call(mut call))
+            if call.function.token_literal() == "unquote" && call.arguments.len() == 1 =>
+        {
+            let evaluated = eval(&Node::Expression(call.arguments.pop().unwrap()), env);
+            convert_object_to_ast_node(evaluated)
+        }
+        n => n,
+    });
+
+    let node = modify(node, &modifier);
+
+    // TODO - drop leaked box env - moliva - 2024/03/27
+    // SAFETY:
+    // unsafe {
+    //     drop(Box::from_raw(env));
+    // };
+
+    node
+}
+
+fn convert_object_to_ast_node(object: Object) -> Node {
+    Node::Expression(match object {
+        Object::Integer(value) => Expression::IntegerLiteral(IntegerLiteral {
+            token: Token::Int(value.to_string()),
+            value,
+        }),
+        _ => todo!(),
+    })
 }
 
 #[cfg(test)]
@@ -32,13 +70,22 @@ mod test {
     }
 
     #[test]
-    #[ignore]
     fn test_quote_unquote() {
         let tests = [
             ("quote(unquote(4))", "4"),
             ("quote(unquote(4 + 4))", "8"),
             ("quote(8 + unquote(4 + 4))", "(8 + 8)"),
             ("quote(unquote(4 + 4) + 8)", "(8 + 8)"),
+            (
+                r#"let foobar = 8;
+             quote(foobar)"#,
+                "foobar",
+            ),
+            (
+                r#"let foobar = 8;
+             quote(unquote(foobar))"#,
+                "8",
+            ),
         ];
 
         for (input, expected) in tests {

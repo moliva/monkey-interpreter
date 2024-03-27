@@ -72,7 +72,7 @@ pub(crate) fn eval(node: &Node, env: &SharedEnvironment) -> Object {
                 // special case for the `quote` macro call that requires the ast prior to its
                 // evaluation
                 if &*e.function.token_literal() == "quote" {
-                    return quote(Node::Expression(e.arguments[0].clone()));
+                    return quote(Node::Expression(e.arguments[0].clone()), env);
                 }
 
                 let function =

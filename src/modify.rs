@@ -4,10 +4,12 @@ use crate::ast::{
     Statement,
 };
 
-pub(crate) type ModifierFn = Box<dyn Fn(&mut Node)>;
+pub(crate) type ModifierFn = Box<dyn Fn(Node) -> Node>;
 
-pub(crate) fn modify(mut node: Node, modifier: &ModifierFn) -> Node {
-    let mut node = match node {
+// TODO - check the error handling in code example - moliva - 2024/03/27
+
+pub(crate) fn modify(node: Node, modifier: &ModifierFn) -> Node {
+    let node = match node {
         Node::Program(Program { statements }) => Node::Program(Program {
             statements: statements
                 .into_iter()
@@ -58,7 +60,6 @@ pub(crate) fn modify(mut node: Node, modifier: &ModifierFn) -> Node {
                     _ => panic!(),
                 },
             }),
-            s => s,
         }),
         Node::Expression(expression) => Node::Expression(match expression {
             Expression::Infix(InfixExpression {
@@ -182,10 +183,7 @@ pub(crate) fn modify(mut node: Node, modifier: &ModifierFn) -> Node {
         }),
     };
 
-    dbg!(&node);
-    modifier(&mut node);
-
-    node
+    modifier(node)
 }
 
 #[cfg(test)]
@@ -216,13 +214,15 @@ mod test {
             })
         };
 
-        let turn_one_into_two: ModifierFn = Box::new(|node: &mut Node| {
+        let turn_one_into_two: ModifierFn = Box::new(|node: Node| {
             let mut integer = match node {
                 Node::Expression(Expression::IntegerLiteral(n)) => n,
-                _ => return,
+                n => return n,
             };
 
             integer.value = 2;
+
+            Node::Expression(Expression::IntegerLiteral(integer))
         });
 
         let tests = [
