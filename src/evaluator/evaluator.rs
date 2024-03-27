@@ -364,11 +364,12 @@ fn eval_program(program: &Program, env: &SharedEnvironment) -> Object {
 
 #[cfg(test)]
 mod test {
-    use std::{cell::RefCell, collections::HashMap};
+    use std::{borrow::Borrow, cell::RefCell, collections::HashMap};
 
     use crate::{
+        evaluator::macro_expansion::define_macros,
         lexer::Lexer,
-        object::Quote,
+        object::Macro,
         parser::Parser,
         test_utils::{match_or_fail, test_eval},
     };
@@ -757,6 +758,43 @@ map(a, double);
             let evaluated = test_eval(input);
             test_boolean_object(&evaluated, expected_value);
         }
+    }
+
+    #[test]
+    fn test_define_macros() {
+        let input = r#"
+        let number = 1;
+        let function = fn(x, y) { x + y };
+        let mymacro = macro(x, y) { x + y; };
+        "#;
+
+        let lexer = Lexer::new(input);
+        let mut parser = Parser::new(lexer);
+
+        let mut program = parser.parse_program();
+
+        let env = Rc::new(RefCell::new(Environment::default()));
+
+        define_macros(&mut program, &env);
+
+        assert_eq!(program.statements.len(), 2);
+
+        let env = RefCell::borrow(&env);
+        assert!(env.get("number").is_none());
+        assert!(env.get("function").is_none());
+
+        let macrou = env.get("mymacro");
+        assert!(&macrou.is_some());
+
+        let Macro {
+            parameters, body, ..
+        } = match_or_fail!(macrou.clone().unwrap(), Object::Macro(m) => m);
+
+        assert_eq!(parameters.len(), 2);
+        assert_eq!(parameters[0].string(), "x".to_owned());
+        assert_eq!(parameters[1].string(), "y".to_owned());
+
+        assert_eq!(body.string(), "{(x + y);}");
     }
 
     #[test]

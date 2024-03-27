@@ -15,6 +15,7 @@ pub(crate) enum Object {
     Array(Vec<Object>),
     Hash(Hash),
     Function(Function),
+    Macro(Macro),
     BuiltinFunction(BuiltinFunction),
     ReturnValue(Box<Object>),
     Error(String),
@@ -39,6 +40,7 @@ impl Object {
             Object::Array(_) => "ARRAY",
             Object::Hash(_) => "HASH",
             Object::Quote(_) => "QUOTE",
+            Object::Macro(_) => "MACRO",
         }
         .to_owned()
     }
@@ -57,6 +59,14 @@ impl Object {
                 let body = body.string();
 
                 format!("fn({params}) {}\n{body}\n{}", "{", "}")
+            }
+            Object::Macro(Macro {
+                parameters, body, ..
+            }) => {
+                let params = parameters.iter().map(Identifier::string).join(", ");
+                let body = body.string();
+
+                format!("macro({params}) {}\n{body}\n{}", "{", "}")
             }
             Object::String(s) => format!("\"{s}\""),
             Object::BuiltinFunction(_) => "builtin function".to_owned(),
@@ -96,7 +106,7 @@ impl Environment {
     pub fn get(&self, name: &str) -> Option<Object> {
         let obj = self.store.get(name);
 
-        obj.map(Clone::clone)
+        obj.cloned()
             .or_else(|| self.outer.as_ref()?.borrow().get(name).clone())
     }
 
@@ -121,6 +131,31 @@ impl std::hash::Hash for Hash {
         std::ptr::hash(&self.0, state);
     }
 }
+
+#[derive(Debug, Clone)]
+pub(crate) struct Macro {
+    pub parameters: Vec<Identifier>,
+    pub body: BlockStatement,
+    pub env: SharedEnvironment,
+}
+
+impl PartialEq for Macro {
+    fn eq(&self, other: &Self) -> bool {
+        std::ptr::eq(&self.parameters, &other.parameters)
+            && std::ptr::eq(&self.body, &other.body)
+            && std::ptr::eq(&self.env, &other.env)
+    }
+}
+
+impl std::hash::Hash for Macro {
+    fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
+        std::ptr::hash(&self.parameters, state);
+        std::ptr::hash(&self.body, state);
+        std::ptr::hash(&self.env, state);
+    }
+}
+
+impl Eq for Macro {}
 
 #[derive(Debug, Clone)]
 pub(crate) struct Function {
