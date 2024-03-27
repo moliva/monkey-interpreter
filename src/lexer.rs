@@ -207,6 +207,7 @@ if (5 < 10) {
 "foo bar"
 [1, 2];
 {"foo": "bar"}
+macro(x, y) { x + y; };
 "#;
 
         let tokens = vec![
@@ -296,6 +297,19 @@ if (5 < 10) {
             Colon,
             String("bar".to_owned()),
             RBrace,
+            Macro,
+            LParen,
+            Ident("x".to_owned()),
+            Comma,
+            Ident("y".to_owned()),
+            RParen,
+            LBrace,
+            Ident("x".to_owned()),
+            Plus,
+            Ident("y".to_owned()),
+            Semicolon,
+            RBrace,
+            Semicolon,
             EOF,
         ];
 

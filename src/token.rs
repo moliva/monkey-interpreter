@@ -38,6 +38,7 @@ pub enum Token {
     RBracket,
 
     // keywords
+    Macro,
     Function,
     Let,
     If,
@@ -74,6 +75,7 @@ impl Token {
             Token::LBracket => "[",
             Token::RBracket => "]",
             Token::Function => "fn",
+            Token::Macro => "macro",
             Token::Let => "let",
             Token::If => "if",
             Token::Else => "else",
@@ -94,6 +96,7 @@ lazy_static! {
         let mut keywords = HashMap::new();
         keywords.insert("let", Let);
         keywords.insert("fn", Function);
+        keywords.insert("macro", Macro);
         keywords.insert("if", If);
         keywords.insert("else", Else);
         keywords.insert("return", Return);
