@@ -363,7 +363,7 @@ fn eval_program(program: &Program, env: &SharedEnvironment) -> Object {
 mod test {
     use std::{cell::RefCell, collections::HashMap};
 
-    use crate::{lexer::Lexer, object::Quote, parser::Parser, test_utils::match_or_fail};
+    use crate::{lexer::Lexer, object::Quote, parser::Parser, test_utils::{match_or_fail, test_eval}};
 
     use super::*;
 
@@ -566,24 +566,6 @@ let two = "two";
         let s = match_or_fail!(evaluated, Object::String(e) => e);
 
         assert_eq!(s, "Hello World!");
-    }
-
-    #[test]
-    fn test_quote() {
-        let tests = [
-            ("quote(5)", "5"),
-            ("quote(5 + 8)", "(5 + 8)"),
-            ("quote(foobar)", "foobar"),
-            ("quote(foobar + barfoo)", "(foobar + barfoo)"),
-        ];
-
-        for (input, expected) in tests {
-            let evaluated = test_eval(input);
-
-            let Quote(node) = match_or_fail!(evaluated, Object::Quote(q) => q);
-
-            assert_eq!(node.string(), expected);
-        }
     }
 
     #[test]
@@ -801,17 +783,6 @@ map(a, double);
     // *****************************************************************************************************
     // *************** Helpers ***************
     // *****************************************************************************************************
-
-    fn test_eval(input: &str) -> Object {
-        let lexer = Lexer::new(input);
-        let mut parser = Parser::new(lexer);
-
-        let program = parser.parse_program();
-
-        let env = Rc::new(RefCell::new(Environment::default()));
-
-        eval(&Node::Program(program), &env)
-    }
 
     fn test_boolean_object(evaluated: &Object, expected: bool) {
         let result = match_or_fail!(evaluated, Object::Boolean(e) => e);

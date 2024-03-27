@@ -10,3 +10,23 @@ macro_rules! match_or_fail {
 }
 
 pub(crate) use match_or_fail;
+
+use std::{cell::RefCell, rc::Rc};
+use crate::{
+    ast::Node,
+    evaluator::eval,
+    lexer::Lexer,
+    object::{Environment, Object},
+    parser::Parser,
+};
+
+pub fn test_eval(input: &str) -> Object {
+    let lexer = Lexer::new(input);
+    let mut parser = Parser::new(lexer);
+
+    let program = parser.parse_program();
+
+    let env = Rc::new(RefCell::new(Environment::default()));
+
+    eval(&Node::Program(program), &env)
+}

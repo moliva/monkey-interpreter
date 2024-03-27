@@ -2,7 +2,7 @@ use itertools::Itertools;
 
 use crate::token::Token;
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub(crate) enum Node {
     Program(Program),
     Statement(Statement),
@@ -19,14 +19,14 @@ impl Node {
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub(crate) struct Let {
     pub token: Token,
     pub name: Identifier,
     pub value: Expression,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub(crate) enum Statement {
     Let(Let),
     Return(Return),
@@ -65,7 +65,7 @@ impl Statement {
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub(crate) struct BlockStatement {
     pub token: Token,
     pub statements: Vec<Statement>,
@@ -80,19 +80,19 @@ impl BlockStatement {
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub(crate) struct ExpressionStatement {
     pub token: Token,
     pub expression: Expression,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub(crate) struct Return {
     pub token: Token,
     pub return_value: Expression,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub(crate) enum Expression {
     Identifier(Identifier),
     IntegerLiteral(IntegerLiteral),
@@ -144,7 +144,7 @@ impl Expression {
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub(crate) struct CallExpression {
     pub token: Token, // the '(' token
     // TODO - should we verify the kind of expression below? - moliva - 2024/03/07
@@ -164,7 +164,7 @@ impl CallExpression {
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub(crate) struct IfExpression {
     pub token: Token,
     pub condition: Box<Expression>,
@@ -195,7 +195,7 @@ impl IfExpression {
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub(crate) struct InfixExpression {
     pub token: Token,
     pub left: Box<Expression>,
@@ -218,7 +218,7 @@ impl InfixExpression {
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub(crate) struct PrefixExpression {
     pub token: Token,
     pub operator: String,
@@ -235,7 +235,7 @@ impl PrefixExpression {
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub(crate) struct Boolean {
     pub token: Token,
     pub value: bool,
@@ -251,7 +251,7 @@ impl Boolean {
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub(crate) struct FunctionLiteral {
     pub token: Token,
     pub parameters: Vec<Identifier>,
@@ -274,7 +274,7 @@ impl FunctionLiteral {
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub(crate) struct StringLiteral {
     pub token: Token,
     pub value: String,
@@ -290,7 +290,7 @@ impl StringLiteral {
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub(crate) struct IntegerLiteral {
     pub token: Token,
     pub value: i64,
@@ -306,7 +306,7 @@ impl IntegerLiteral {
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub(crate) struct Identifier {
     pub token: Token,
     pub value: String,
@@ -327,6 +327,20 @@ pub struct Program {
     pub(crate) statements: Vec<Statement>,
 }
 
+impl PartialEq for Program {
+    fn eq(&self, other: &Self) -> bool {
+        vec_eq::<Statement>(&self.statements, &other.statements)
+    }
+}
+
+fn vec_eq<T: PartialEq>(one: &Vec<T>, other: &Vec<T>) -> bool {
+    if one.len() != other.len() {
+        return false;
+    }
+
+    one.iter().zip(other.iter()).all(|(a, b)| a == b)
+}
+
 impl Program {
     pub fn token_literal(&self) -> String {
         self.statements.iter().map(|s| s.token_literal()).join("\n")
@@ -339,7 +353,7 @@ impl Program {
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub(crate) struct HashLiteral {
     pub token: Token, // the '{' token
     pub pairs: Vec<(Expression, Expression)>,
@@ -361,7 +375,7 @@ impl HashLiteral {
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub(crate) struct ArrayLiteral {
     pub token: Token, // the '[' token
     pub elements: Vec<Expression>,
@@ -379,7 +393,7 @@ impl ArrayLiteral {
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub(crate) struct IndexOperator {
     pub token: Token, // the '[' token
     pub left: Box<Expression>,
