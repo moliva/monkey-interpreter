@@ -73,6 +73,8 @@ macro_rules! modify_match {
     };
 }
 
+pub(crate) use modify_match;
+
 pub(crate) type ModifierFn<'a> = Box<dyn Fn(Node) -> Node + 'a>;
 
 // TODO - check the error handling in code example - moliva - 2024/03/27
@@ -255,7 +257,7 @@ mod test {
         });
 
         let tests = [
-            (one().to_node(), Node::Expression(two())),
+            (one().into_node(), Node::Expression(two())),
             (
                 Node::Program(Program {
                     statements: vec![Statement::Expression(ExpressionStatement {
@@ -413,12 +415,12 @@ mod test {
                     token: Token::Lt,
                     pairs: vec![(one(), one()), (one(), one())],
                 })
-                .to_node(),
+                .into_node(),
                 Expression::HashLiteral(HashLiteral {
                     token: Token::Lt,
                     pairs: vec![(two(), two()), (two(), two())],
                 })
-                .to_node(),
+                .into_node(),
             ),
         ];
 

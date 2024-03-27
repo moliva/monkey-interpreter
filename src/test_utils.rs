@@ -12,7 +12,7 @@ macro_rules! match_or_fail {
 pub(crate) use match_or_fail;
 
 use crate::{
-    ast::ast::Node,
+    ast::ast::{Node, Program},
     evaluator::evaluator::eval,
     lexer::Lexer,
     object::{Environment, Object},
@@ -29,4 +29,11 @@ pub fn test_eval(input: &str) -> Object {
     let env = Rc::new(RefCell::new(Environment::default()));
 
     eval(&Node::Program(program), &env)
+}
+
+pub fn test_parse_program(input: &str) -> Program {
+    let lexer = Lexer::new(input);
+    let mut parser = Parser::new(lexer);
+
+    parser.parse_program()
 }

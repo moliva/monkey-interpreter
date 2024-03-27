@@ -159,7 +159,7 @@ fn eval_hash_index_expression(left: Hash, index: Object) -> Object {
 
     let value = pairs.get(&index);
 
-    value.map(Clone::clone).unwrap_or_else(|| Object::Null)
+    value.cloned().unwrap_or_else(|| Object::Null)
 }
 
 fn apply_function(function: Object, args: Vec<Object>) -> Object {
@@ -371,7 +371,7 @@ mod test {
         lexer::Lexer,
         object::Macro,
         parser::Parser,
-        test_utils::{match_or_fail, test_eval},
+        test_utils::{match_or_fail, test_eval, test_parse_program},
     };
 
     use super::*;
@@ -768,12 +768,9 @@ map(a, double);
         let mymacro = macro(x, y) { x + y; };
         "#;
 
-        let lexer = Lexer::new(input);
-        let mut parser = Parser::new(lexer);
+        let mut program = test_parse_program(input);
 
-        let mut program = parser.parse_program();
-
-        let env = Rc::new(RefCell::new(Environment::default()));
+        let env = Environment::default().shared();
 
         define_macros(&mut program, &env);
 

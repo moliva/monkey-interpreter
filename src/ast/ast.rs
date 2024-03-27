@@ -35,6 +35,10 @@ pub(crate) enum Statement {
 }
 
 impl Statement {
+    pub fn into_node(self) -> Node {
+        Node::Statement(self)
+    }
+
     pub fn token_literal(&self) -> String {
         use Statement::*;
 
@@ -110,7 +114,7 @@ pub(crate) enum Expression {
 }
 
 impl Expression {
-    pub fn to_node(self) -> Node {
+    pub fn into_node(self) -> Node {
         Node::Expression(self)
     }
 
@@ -357,13 +361,19 @@ pub struct Program {
     pub(crate) statements: Vec<Statement>,
 }
 
+impl Program {
+    pub fn to_node(self) -> Node {
+        Node::Program(self)
+    }
+}
+
 impl PartialEq for Program {
     fn eq(&self, other: &Self) -> bool {
         vec_eq::<Statement>(&self.statements, &other.statements)
     }
 }
 
-fn vec_eq<T: PartialEq>(one: &Vec<T>, other: &Vec<T>) -> bool {
+fn vec_eq<T: PartialEq>(one: &[T], other: &[T]) -> bool {
     if one.len() != other.len() {
         return false;
     }

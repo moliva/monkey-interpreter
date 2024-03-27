@@ -103,6 +103,10 @@ impl Environment {
         }
     }
 
+    pub fn shared(self) -> SharedEnvironment {
+        Rc::new(RefCell::new(self))
+    }
+
     pub fn get(&self, name: &str) -> Option<Object> {
         let obj = self.store.get(name);
 
