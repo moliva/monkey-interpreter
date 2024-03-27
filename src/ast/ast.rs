@@ -101,6 +101,7 @@ pub(crate) enum Expression {
     ArrayLiteral(ArrayLiteral),
     HashLiteral(HashLiteral),
     FunctionLiteral(FunctionLiteral),
+    MacroLiteral(MacroLiteral),
     Prefix(PrefixExpression),
     Infix(InfixExpression),
     If(IfExpression),
@@ -122,6 +123,7 @@ impl Expression {
             Expression::Infix(InfixExpression { token, .. }) => token.literal(),
             Expression::If(IfExpression { token, .. }) => token.literal(),
             Expression::FunctionLiteral(FunctionLiteral { token, .. }) => token.literal(),
+            Expression::MacroLiteral(MacroLiteral { token, .. }) => token.literal(),
             Expression::Call(CallExpression { token, .. }) => token.literal(),
             Expression::StringLiteral(StringLiteral { token, .. }) => token.literal(),
             Expression::ArrayLiteral(ArrayLiteral { token, .. }) => token.literal(),
@@ -139,6 +141,7 @@ impl Expression {
             Expression::Infix(i) => i.string(),
             Expression::If(i) => i.string(),
             Expression::FunctionLiteral(i) => i.string(),
+            Expression::MacroLiteral(i) => i.string(),
             Expression::Call(i) => i.string(),
             Expression::StringLiteral(i) => i.string(),
             Expression::ArrayLiteral(i) => i.string(),
@@ -252,6 +255,29 @@ impl Boolean {
 
     pub fn string(&self) -> String {
         self.token.literal()
+    }
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub(crate) struct MacroLiteral {
+    pub token: Token, // The 'macro' token
+    pub parameters: Vec<Identifier>,
+    pub body: BlockStatement,
+}
+
+impl MacroLiteral {
+    pub fn token_literal(&self) -> String {
+        self.token.literal()
+    }
+
+    pub fn string(&self) -> String {
+        let params = self.parameters.iter().map(Identifier::string).join(", ");
+        format!(
+            "{}({}) {}",
+            self.token_literal(),
+            params,
+            self.body.string()
+        )
     }
 }
 

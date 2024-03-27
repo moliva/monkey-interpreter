@@ -120,6 +120,28 @@ impl Parser {
         list
     }
 
+    fn parse_macro_literal(&mut self) -> Option<Expression> {
+        let token = self.current_token.clone();
+
+        if !self.expect_peek(Token::LParen) {
+            return None;
+        }
+
+        let parameters = self.parse_function_parameters();
+
+        if !self.expect_peek(Token::LBrace) {
+            return None;
+        }
+
+        let body = self.parse_block_statement();
+
+        Some(Expression::MacroLiteral(MacroLiteral {
+            token,
+            parameters,
+            body,
+        }))
+    }
+
     fn parse_function_literal(&mut self) -> Option<Expression> {
         let token = self.current_token.clone();
 
@@ -515,6 +537,7 @@ impl Parser {
         self.register_prefix(LParen, Self::parse_grouped_expression);
         self.register_prefix(If, Self::parse_if_expression);
         self.register_prefix(Function, Self::parse_function_literal);
+        self.register_prefix(Macro, Self::parse_macro_literal);
         self.register_prefix(LBracket, Self::parse_array_literal);
         self.register_prefix(LBrace, Self::parse_hash_literal);
     }
@@ -997,6 +1020,39 @@ mod tests {
             assert_eq!(exp.operator, operator);
             test_literal_expression(&exp.right, value);
         }
+    }
+
+    #[test]
+    fn test_macro_literal_parsing() {
+        let input = "macro(x, y) { x + y; }";
+
+        let program = parse_program(input);
+
+        assert_eq!(program.statements.len(), 1);
+
+        let exp = match_or_fail!(&program.statements[0], Statement::Expression(e) => e);
+        let exp = match_or_fail!(&exp.expression, Expression::MacroLiteral(i) => i);
+
+        assert_eq!(exp.parameters.len(), 2);
+        // TODO - omg! - moliva - 2024/03/06
+        test_literal_expression(
+            &Expression::Identifier(exp.parameters[0].clone()),
+            LitVal::Identifier("x".to_owned()),
+        );
+        test_literal_expression(
+            &Expression::Identifier(exp.parameters[1].clone()),
+            LitVal::Identifier("y".to_owned()),
+        );
+
+        assert_eq!(exp.body.statements.len(), 1);
+        let body_statement = match_or_fail!(&exp.body.statements[0], Statement::Expression(e) => e);
+
+        test_infix_expression(
+            &body_statement.expression,
+            LitVal::Identifier("x".to_owned()),
+            "+",
+            LitVal::Identifier("y".to_owned()),
+        );
     }
 
     #[test]
