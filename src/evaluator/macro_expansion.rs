@@ -43,7 +43,7 @@ pub fn expand_macros(program: Program, env: &SharedEnvironment) -> Program {
             let args = quote_args(&call);
             let eval_env = extend_macro_env(parameters, env, args);
 
-            let evaluated = eval(&Statement::Block(body).into_node(), &eval_env.shared());
+            let evaluated = eval(&Statement::Block(body).into_node(), &eval_env.into_shared());
 
             match evaluated {
                 Object::Quote(Quote(n)) => n,
@@ -143,7 +143,7 @@ mod tests {
             let expected = test_parse_program(expected);
             let mut program = test_parse_program(input);
 
-            let env = Environment::default().shared();
+            let env = Environment::default().into_shared();
 
             define_macros(&mut program, &env);
 

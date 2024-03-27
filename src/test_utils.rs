@@ -18,7 +18,6 @@ use crate::{
     object::{Environment, Object},
     parser::Parser,
 };
-use std::{cell::RefCell, rc::Rc};
 
 pub fn test_eval(input: &str) -> Object {
     let lexer = Lexer::new(input);
@@ -26,7 +25,7 @@ pub fn test_eval(input: &str) -> Object {
 
     let program = parser.parse_program();
 
-    let env = Rc::new(RefCell::new(Environment::default()));
+    let env = Environment::default().into_shared();
 
     eval(&Node::Program(program), &env)
 }

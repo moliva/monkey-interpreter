@@ -103,7 +103,7 @@ impl Environment {
         }
     }
 
-    pub fn shared(self) -> SharedEnvironment {
+    pub fn into_shared(self) -> SharedEnvironment {
         Rc::new(RefCell::new(self))
     }
 

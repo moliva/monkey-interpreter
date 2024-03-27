@@ -1,10 +1,6 @@
 use anyhow::Result;
 
-use std::{
-    cell::RefCell,
-    io::{Stdin, Stdout, Write},
-    rc::Rc,
-};
+use std::io::{Stdin, Stdout, Write};
 
 use crate::{
     ast::ast::Node, evaluator::evaluator::eval, lexer::Lexer, object::Environment, parser::Parser,
@@ -14,7 +10,7 @@ const PROMPT: &str = ">> ";
 
 pub fn start(in_: Stdin, out: &mut Stdout) -> Result<()> {
     let mut input = String::new();
-    let env = Rc::new(RefCell::new(Environment::default()));
+    let env = Environment::default().into_shared();
 
     loop {
         input.clear();

@@ -169,7 +169,7 @@ fn apply_function(function: Object, args: Vec<Object>) -> Object {
             body,
             env,
         }) => {
-            let extended_env = Rc::new(RefCell::new(extend_function_env(env, parameters, args)));
+            let extended_env = extend_function_env(env, parameters, args).into_shared();
             let evaluated = eval(&Node::Statement(Statement::Block(body)), &extended_env);
 
             unwrap_return_value(evaluated)
@@ -770,7 +770,7 @@ map(a, double);
 
         let mut program = test_parse_program(input);
 
-        let env = Environment::default().shared();
+        let env = Environment::default().into_shared();
 
         define_macros(&mut program, &env);
 
