@@ -4,6 +4,75 @@ use crate::ast::ast::{
     Statement,
 };
 
+macro_rules! modify_match_err_format {
+    () => {
+        "could not match result of modify for value {} as {}"
+    };
+}
+
+pub(crate) use modify_match_err_format;
+
+/// Wraps a node value into the Node enum, applies a modify and unwraps it to the original value
+/// type afterwards.
+macro_rules! modify_match {
+    ($e:ident as Expression, $modifier:expr) => {
+        match crate::ast::modify::modify(crate::ast::ast::Node::Expression($e), $modifier) {
+            crate::ast::ast::Node::Expression(e) => e,
+            _ => panic!(
+                crate::ast::modify::modify_match_err_format!(),
+                stringify!($e),
+                "Expression"
+            ),
+        }
+    };
+    ($e:ident as Statement, $modifier:expr) => {
+        match crate::ast::modify::modify(crate::ast::ast::Node::Statement($e), $modifier) {
+            crate::ast::ast::Node::Statement(e) => e,
+            _ => panic!(
+                crate::ast::modify::modify_match_err_format!(),
+                stringify!($e),
+                "Statement"
+            ),
+        }
+    };
+    ($e:ident as Program, $modifier:expr) => {
+        match crate::ast::modify::modify(crate::ast::ast::Node::Program($e), $modifier) {
+            crate::ast::ast::Node::Program(e) => e,
+            _ => panic!(
+                crate::ast::modify::modify_match_err_format!(),
+                stringify!($e),
+                "Program"
+            ),
+        }
+    };
+    ($e:ident as Block, $modifier:expr) => {
+        match crate::ast::modify::modify(
+            crate::ast::ast::Node::Statement(crate::ast::ast::Statement::Block($e)),
+            $modifier,
+        ) {
+            crate::ast::ast::Node::Statement(crate::ast::ast::Statement::Block(e)) => e,
+            _ => panic!(
+                crate::ast::modify::modify_match_err_format!(),
+                stringify!($e),
+                "Block"
+            ),
+        }
+    };
+    ($e:ident as Identifier, $modifier:expr) => {
+        match crate::ast::modify::modify(
+            crate::ast::ast::Node::Expression(crate::ast::ast::Expression::Identifier($e)),
+            $modifier,
+        ) {
+            crate::ast::ast::Node::Expression(crate::ast::ast::Expression::Identifier(p)) => p,
+            _ => panic!(
+                crate::ast::modify::modify_match_err_format!(),
+                stringify!($e),
+                "Identifier"
+            ),
+        }
+    };
+}
+
 pub(crate) type ModifierFn<'a> = Box<dyn Fn(Node) -> Node + 'a>;
 
 // TODO - check the error handling in code example - moliva - 2024/03/27
@@ -13,32 +82,23 @@ pub(crate) fn modify(node: Node, modifier: &ModifierFn) -> Node {
         Node::Program(Program { statements }) => Node::Program(Program {
             statements: statements
                 .into_iter()
-                .map(|s| match modify(Node::Statement(s), modifier) {
-                    Node::Statement(e) => e,
-                    _ => panic!(),
-                })
+                .map(|s| modify_match!(s as Statement, modifier))
                 .collect(),
         }),
         Node::Statement(s) => Node::Statement(match s {
             Statement::Expression(ExpressionStatement {
                 expression: e,
                 token,
-            }) => Statement::Expression(match modify(Node::Expression(e), modifier) {
-                Node::Expression(e) => ExpressionStatement {
-                    expression: e,
-                    token,
-                },
-                _ => panic!(),
+            }) => Statement::Expression(ExpressionStatement {
+                token,
+                expression: modify_match!(e as Expression, modifier),
             }),
             Statement::Block(BlockStatement { token, statements }) => {
                 Statement::Block(BlockStatement {
                     token,
                     statements: statements
                         .into_iter()
-                        .map(|s| match modify(Node::Statement(s), modifier) {
-                            Node::Statement(s) => s,
-                            _ => panic!(),
-                        })
+                        .map(|s| modify_match!(s as Statement, modifier))
                         .collect(),
                 })
             }
@@ -47,18 +107,12 @@ pub(crate) fn modify(node: Node, modifier: &ModifierFn) -> Node {
                 return_value,
             }) => Statement::Return(Return {
                 token,
-                return_value: match modify(Node::Expression(return_value), modifier) {
-                    Node::Expression(e) => e,
-                    _ => panic!(),
-                },
+                return_value: modify_match!(return_value as Expression, modifier),
             }),
             Statement::Let(Let { token, name, value }) => Statement::Let(Let {
                 token,
                 name,
-                value: match modify(Node::Expression(value), modifier) {
-                    Node::Expression(e) => e,
-                    _ => panic!(),
-                },
+                value: modify_match!(value as Expression, modifier),
             }),
         }),
         Node::Expression(expression) => Node::Expression(match expression {
@@ -70,13 +124,13 @@ pub(crate) fn modify(node: Node, modifier: &ModifierFn) -> Node {
             }) => Expression::Infix(InfixExpression {
                 token,
                 operator,
-                left: Box::new(match modify(Node::Expression(*left), modifier) {
-                    Node::Expression(e) => e,
-                    _ => panic!(),
+                left: Box::new({
+                    let l = *left;
+                    modify_match!(l as Expression, modifier)
                 }),
-                right: Box::new(match modify(Node::Expression(*right), modifier) {
-                    Node::Expression(e) => e,
-                    _ => panic!(),
+                right: Box::new({
+                    let r = *right;
+                    modify_match!(r as Expression, modifier)
                 }),
             }),
             Expression::Prefix(PrefixExpression {
@@ -86,21 +140,21 @@ pub(crate) fn modify(node: Node, modifier: &ModifierFn) -> Node {
             }) => Expression::Prefix(PrefixExpression {
                 token,
                 operator,
-                right: Box::new(match modify(Node::Expression(*right), modifier) {
-                    Node::Expression(e) => e,
-                    _ => panic!(),
+                right: Box::new({
+                    let r = *right;
+                    modify_match!(r as Expression, modifier)
                 }),
             }),
             Expression::IndexOperator(IndexOperator { token, left, index }) => {
                 Expression::IndexOperator(IndexOperator {
                     token,
-                    left: Box::new(match modify(Node::Expression(*left), modifier) {
-                        Node::Expression(e) => e,
-                        _ => panic!(),
+                    left: Box::new({
+                        let l = *left;
+                        modify_match!(l as Expression, modifier)
                     }),
-                    index: Box::new(match modify(Node::Expression(*index), modifier) {
-                        Node::Expression(e) => e,
-                        _ => panic!(),
+                    index: Box::new({
+                        let i = *index;
+                        modify_match!(i as Expression, modifier)
                     }),
                 })
             }
@@ -111,21 +165,12 @@ pub(crate) fn modify(node: Node, modifier: &ModifierFn) -> Node {
                 alternative,
             }) => Expression::If(IfExpression {
                 token,
-                condition: Box::new(match modify(Node::Expression(*condition), modifier) {
-                    Node::Expression(e) => e,
-                    _ => panic!(),
+                condition: Box::new({
+                    let l = *condition;
+                    modify_match!(l as Expression, modifier)
                 }),
-                consequence: match modify(Node::Statement(Statement::Block(consequence)), modifier)
-                {
-                    Node::Statement(Statement::Block(s)) => s,
-                    _ => panic!(),
-                },
-                alternative: alternative.map(|alternative| {
-                    match modify(Node::Statement(Statement::Block(alternative)), modifier) {
-                        Node::Statement(Statement::Block(s)) => s,
-                        _ => panic!(),
-                    }
-                }),
+                consequence: modify_match!(consequence as Block, modifier),
+                alternative: alternative.map(|a| modify_match!(a as Block, modifier)),
             }),
             Expression::FunctionLiteral(FunctionLiteral {
                 token,
@@ -135,27 +180,16 @@ pub(crate) fn modify(node: Node, modifier: &ModifierFn) -> Node {
                 token,
                 parameters: parameters
                     .into_iter()
-                    .map(
-                        |p| match modify(Node::Expression(Expression::Identifier(p)), modifier) {
-                            Node::Expression(Expression::Identifier(p)) => p,
-                            _ => panic!(),
-                        },
-                    )
+                    .map(|p| modify_match!(p as Identifier, modifier))
                     .collect(),
-                body: match modify(Node::Statement(Statement::Block(body)), modifier) {
-                    Node::Statement(Statement::Block(s)) => s,
-                    _ => panic!(),
-                },
+                body: modify_match!(body as Block, modifier),
             }),
             Expression::ArrayLiteral(ArrayLiteral { token, elements }) => {
                 Expression::ArrayLiteral(ArrayLiteral {
                     token,
                     elements: elements
                         .into_iter()
-                        .map(|e| match modify(Node::Expression(e), modifier) {
-                            Node::Expression(e) => e,
-                            _ => panic!(),
-                        })
+                        .map(|e| modify_match!(e as Expression, modifier))
                         .collect(),
                 })
             }
@@ -166,14 +200,8 @@ pub(crate) fn modify(node: Node, modifier: &ModifierFn) -> Node {
                         .into_iter()
                         .map(|(k, v)| {
                             (
-                                match modify(Node::Expression(k), modifier) {
-                                    Node::Expression(e) => e,
-                                    _ => panic!(),
-                                },
-                                match modify(Node::Expression(v), modifier) {
-                                    Node::Expression(e) => e,
-                                    _ => panic!(),
-                                },
+                                modify_match!(k as Expression, modifier),
+                                modify_match!(v as Expression, modifier),
                             )
                         })
                         .collect(),
