@@ -3,14 +3,23 @@ use anyhow::Result;
 use std::io::{Stdin, Stdout, Write};
 
 use crate::{
-    ast::ast::Node, evaluator::evaluator::eval, lexer::Lexer, object::Environment, parser::Parser,
+    ast::ast::Node,
+    evaluator::{
+        evaluator::eval,
+        macro_expansion::{define_macros, expand_macros},
+    },
+    lexer::Lexer,
+    object::Environment,
+    parser::Parser,
 };
 
 const PROMPT: &str = ">> ";
 
 pub fn start(in_: Stdin, out: &mut Stdout) -> Result<()> {
     let mut input = String::new();
+
     let env = Environment::default().into_shared();
+    let macro_env = Environment::default().into_shared();
 
     loop {
         input.clear();
@@ -41,14 +50,17 @@ pub fn start(in_: Stdin, out: &mut Stdout) -> Result<()> {
         let lexer = Lexer::new(&input);
         let mut parser = Parser::new(lexer);
 
-        let program = parser.parse_program();
+        let mut program = parser.parse_program();
 
         if !parser.errors.is_empty() {
             print_parser_errors(out, &parser.errors)?;
             continue;
         }
 
-        let evaluated = eval(&Node::Program(program), &env);
+        define_macros(&mut program, &macro_env);
+        let expanded = expand_macros(program, &macro_env);
+
+        let evaluated = eval(&expanded.into_node(), &env);
         writeln!(out, "{}", evaluated.inspect())?;
     }
 }

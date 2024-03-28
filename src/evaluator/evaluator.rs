@@ -359,18 +359,16 @@ fn eval_program(program: &Program, env: &SharedEnvironment) -> Object {
         result = Some(evaluated);
     }
 
-    result.unwrap()
+    result.unwrap_or_else(|| Object::Null)
 }
 
 #[cfg(test)]
 mod test {
-    use std::{borrow::Borrow, cell::RefCell, collections::HashMap};
+    use std::{cell::RefCell, collections::HashMap};
 
     use crate::{
         evaluator::macro_expansion::define_macros,
-        lexer::Lexer,
         object::Macro,
-        parser::Parser,
         test_utils::{match_or_fail, test_eval, test_parse_program},
     };
 

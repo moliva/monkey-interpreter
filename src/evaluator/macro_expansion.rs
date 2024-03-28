@@ -5,7 +5,7 @@ use crate::{
         ast::{
             CallExpression, Expression, Identifier, Let, MacroLiteral, Node, Program, Statement,
         },
-        modify::{modify, modify_match, ModifierFn},
+        modify::{modify_match, ModifierFn},
     },
     evaluator::evaluator::eval,
     object::{Environment, Macro, Object, Quote, SharedEnvironment},
@@ -31,7 +31,7 @@ fn is_macro_definition(statement: &Statement) -> bool {
     matches!(statement, Statement::Let(Let { value, .. }) if matches!(value, Expression::MacroLiteral(_)))
 }
 
-pub fn expand_macros(program: Program, env: &SharedEnvironment) -> Program {
+pub(crate) fn expand_macros(program: Program, env: &SharedEnvironment) -> Program {
     let modifier: ModifierFn = Box::new(|node| match node {
         Node::Expression(Expression::Call(call)) if option_macro_call(&call, env).is_some() => {
             let Macro {
@@ -79,7 +79,7 @@ fn quote_args(call: &CallExpression) -> Vec<Object> {
 fn option_macro_call(expression: &CallExpression, env: &SharedEnvironment) -> Option<Macro> {
     match &*expression.function {
         Expression::Identifier(Identifier { value, .. }) => {
-            let object = env.borrow().get(&value);
+            let object = env.borrow().get(value);
 
             match object {
                 Some(Object::Macro(m)) => Some(m),
@@ -136,6 +136,20 @@ mod tests {
                  reverse(2 + 2, 10 - 5);
                  "#,
                 "(10 - 5) - (2 + 2)",
+            ),
+            (
+                r#"
+                let unless = macro(condition, consequence, alternative) {
+                    quote(if (!(unquote(condition))) {
+                        unquote(consequence);
+                    } else {
+                        unquote(alternative);
+                    });
+                };
+
+                unless(10 > 5, puts("not greater") , puts("greater"));
+                "#,
+                r#"if (!(10 > 5)) { puts("not greater") } else { puts("greater") }"#,
             ),
         ];
 

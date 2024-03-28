@@ -362,7 +362,7 @@ pub struct Program {
 }
 
 impl Program {
-    pub fn to_node(self) -> Node {
+    pub(crate) fn into_node(self) -> Node {
         Node::Program(self)
     }
 }

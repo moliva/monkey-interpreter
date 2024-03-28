@@ -75,6 +75,8 @@ macro_rules! modify_match {
 
 pub(crate) use modify_match;
 
+use super::ast::CallExpression;
+
 pub(crate) type ModifierFn<'a> = Box<dyn Fn(Node) -> Node + 'a>;
 
 // TODO - check the error handling in code example - moliva - 2024/03/27
@@ -209,6 +211,18 @@ pub(crate) fn modify(node: Node, modifier: &ModifierFn) -> Node {
                         .collect(),
                 })
             }
+            Expression::Call(CallExpression {
+                token,
+                function,
+                arguments,
+            }) => Expression::Call(CallExpression {
+                token,
+                function,
+                arguments: arguments
+                    .into_iter()
+                    .map(|v| modify_match!(v as Expression, modifier))
+                    .collect(),
+            }),
             s => s,
         }),
     };
