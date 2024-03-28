@@ -1,8 +1,13 @@
 use crate::{
-    ast::ast::{Boolean, Expression, IntegerLiteral, Node},
-    ast::modify::{modify, ModifierFn},
+    ast::{
+        ast::{
+            ArrayLiteral, Boolean, Expression, FunctionLiteral, HashLiteral, IntegerLiteral,
+            MacroLiteral, Node, StringLiteral,
+        },
+        modify::{modify, ModifierFn},
+    },
     evaluator::evaluator::eval,
-    object::{Object, Quote, SharedEnvironment},
+    object::{BuiltinFunction, Function, Hash, Macro, Object, Quote, SharedEnvironment},
     token::Token,
 };
 
@@ -27,6 +32,13 @@ fn eval_unquote_calls(node: Node, env: &SharedEnvironment) -> Node {
     modify(node, &modifier)
 }
 
+fn convert_wrapping_to_expression(e: Object) -> Expression {
+    match convert_object_to_ast_node(e) {
+        Node::Expression(e) => e,
+        _ => panic!("expected expression"),
+    }
+}
+
 fn convert_object_to_ast_node(object: Object) -> Node {
     // TODO - complete the missing object variants - moliva - 2024/03/27
     Node::Expression(match object {
@@ -38,8 +50,50 @@ fn convert_object_to_ast_node(object: Object) -> Node {
             token: Token::Ident(value.to_string()),
             value,
         }),
+        Object::String(value) => Expression::StringLiteral(StringLiteral {
+            token: Token::String(value.clone()),
+            value,
+        }),
+        Object::Array(array) => Expression::ArrayLiteral(ArrayLiteral {
+            token: Token::LBracket,
+            elements: array
+                .into_iter()
+                .map(convert_wrapping_to_expression)
+                .collect(),
+        }),
+        Object::Hash(Hash(elements)) => Expression::HashLiteral(HashLiteral {
+            token: Token::LBrace,
+            pairs: elements
+                .into_iter()
+                .map(|(k, v)| {
+                    (
+                        convert_wrapping_to_expression(k),
+                        convert_wrapping_to_expression(v),
+                    )
+                })
+                .collect::<Vec<_>>(),
+        }),
+        Object::Function(Function {
+            parameters, body, ..
+        }) => Expression::FunctionLiteral(FunctionLiteral {
+            token: Token::Function,
+            parameters,
+            body,
+        }),
+        Object::Macro(Macro {
+            parameters, body, ..
+        }) => Expression::MacroLiteral(MacroLiteral {
+            token: Token::Macro,
+            parameters,
+            body,
+        }),
+        Object::BuiltinFunction(_builtin) => {
+            todo!("this should resolve to the identifier of the builtin function")
+        }
+        Object::ReturnValue(_) => panic!("only supporting expressions at the moment"),
+        Object::Error(_) => panic!("error in macro!"),
+        Object::Null => todo!("implement node for null"),
         Object::Quote(Quote(n)) => return n,
-        _ => todo!(),
     })
 }
 
